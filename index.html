@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臺中一中校友會 - 桌次看板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .status-uncheck { background-color: #FEF08A; border-color: #EAB308; color: #713F12; }
+    .status-checked { background-color: #FFFFFF; border-color: #22C55E; color: #0F172A; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-6 font-sans">
+  <div class="max-w-7xl mx-auto">
+    <header class="bg-white rounded-xl shadow-md p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-800">臺中一中校友會 桌次簽到看板</h1>
+      </div>
+      <div class="flex items-center gap-6">
+        <div class="text-center"><div class="text-xs text-slate-400">總出席</div><div id="statTotal" class="text-2xl font-black">0</div></div>
+        <div class="text-center"><div class="text-xs text-slate-400">已報到</div><div id="statCheckedIn" class="text-2xl font-black text-green-600">0</div></div>
+        <button onclick="loadBoardData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">重新整理</button>
+      </div>
+    </header>
+    <div id="tablesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">載入中...</div>
+  </div>
+
+  <script>
+    // ⚠️ 這裡非常重要！請將下方的字串替換為你剛剛在 GAS 發布的 /exec 網址
+    const API_URL = "https://script.google.com/macros/s/你的_GAS_網址ID/exec";
+
+    async function loadBoardData() {
+      try {
+        // 向 GAS 請求資料
+        const res = await fetch(`${API_URL}?action=getBoardData`);
+        const data = await res.json();
+        if(data.status === 'success') renderBoard(data);
+      } catch (err) {
+        console.error("載入失敗", err);
+      }
+    }
+
+    function renderBoard(res) {
+      document.getElementById('statTotal').innerText = res.stats.total;
+      document.getElementById('statCheckedIn').innerText = res.stats.checkedIn;
+      
+      const grid = document.getElementById('tablesGrid');
+      grid.innerHTML = '';
+
+      for (const [tableName, guests] of Object.entries(res.tables)) {
+        let card = `<div class="bg-white rounded-xl shadow-sm border p-4"><h2 class="font-bold mb-3">${tableName}</h2><div class="grid grid-cols-2 gap-2">`;
+        guests.forEach(g => {
+          const isChecked = (g.status === '已報到');
+          const style = isChecked ? 'status-checked shadow-sm' : 'status-uncheck';
+          card += `
+            <div onclick="toggleCheckIn('${g.uuid}')" class="cursor-pointer p-2.5 rounded-lg border flex flex-col ${style}">
+              <div class="text-sm font-semibold truncate">#${g.seatNum} ${g.guestName}</div>
+              <div class="text-[10px] opacity-70 mt-1">${isChecked ? '已報到' : '尚未報到'}</div>
+            </div>`;
+        });
+        card += `</div></div>`;
+        grid.innerHTML += card;
+      }
+    }
+
+    async function toggleCheckIn(uuid) {
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'toggleCheckIn', uuid: uuid })
+        });
+        loadBoardData(); // 點擊後重新載入
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    window.onload = loadBoardData;
+  </script>
+</body>
+</html>
