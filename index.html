@@ -36,89 +36,81 @@
     </div>
   </div>
 
-  <div class="max-w-md mx-auto p-4">
+  <div id="eventModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div id="modalImageContainer" class="w-full h-48 bg-gray-200 hidden bg-cover bg-center"></div>
+      <div class="p-5 overflow-y-auto">
+        <div class="flex justify-between items-start mb-2"><span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span><button onclick="closeEventModal()" class="text-gray-400 font-bold text-xl leading-none">&times;</button></div>
+        <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-3">活動標題</h2>
+        <div class="text-sm text-gray-600 space-y-1 mb-4 border-b pb-4"><p>🕒 <span id="modalDate"></span></p><p>📍 <span id="modalLocation"></span></p><p>👥 限定屆數：<span id="modalCohorts" class="font-bold text-blue-700"></span></p></div>
+        <div id="modalContent" class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap mb-4"></div>
+      </div>
+      <div class="p-4 bg-gray-50 border-t border-gray-200"><button onclick="registerEvent()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-md transition">🎟️ 我要報名參與</button></div>
+    </div>
+  </div>
 
-    <!-- 視圖 1：校友及會員資料 -->
+  <div class="max-w-md mx-auto p-4">
     <div id="view-profile" class="view-section hidden">
-      
-      <!-- 個人名片區 (完全無 LINE ID) -->
       <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-4 bg-gradient-to-br from-white to-blue-50">
-        <div class="flex justify-between items-center mb-3">
-          <h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2>
-          <span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span>
-        </div>
+        <div class="flex justify-between items-center mb-3"><h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2><span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span></div>
         <div class="space-y-2 text-sm text-gray-700">
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">真實姓名</span><span id="cardName" class="font-bold">尚未設定</span></div>
-          <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold tracking-wider text-blue-700">尚未產生</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold text-blue-700">尚未產生</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">在學學號</span><span id="cardStudentId" class="font-mono">未提供</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">未提供</span></div>
         </div>
       </div>
-      
-      <!-- 第一層表單 -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
         <h3 class="text-md font-bold text-gray-800 mb-4 border-b pb-2">✏️ 更新會員資料</h3>
         <form class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">性別 <span class="text-red-500">*</span></label><select id="userGender" class="w-full border border-gray-300 p-2 rounded-lg bg-white"><option value="男" selected>男</option><option value="女">女</option><option value="其他">其他</option></select></div>
-          </div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 <span class="text-red-500">*</span></label><select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg bg-white"></select></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg outline-none" placeholder="例如：0912345678"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <button type="button" onclick="saveBasicProfile()" id="saveBasicBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存基本資料</button>
+          <div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border p-2 rounded-lg outline-none"></div><div><label class="block text-sm font-semibold text-gray-600 mb-1">性別 <span class="text-red-500">*</span></label><select id="userGender" class="w-full border p-2 rounded-lg bg-white"><option value="男">男</option><option value="女">女</option><option value="其他">其他</option></select></div></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 <span class="text-red-500">*</span></label><select id="userCohort" class="w-full border p-2 rounded-lg bg-white"></select></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border p-2 rounded-lg outline-none"></div>
+          <button type="button" onclick="saveBasicProfile()" id="saveBasicBtn" class="w-full bg-blue-700 text-white font-bold py-3 rounded-lg mt-2">儲存基本資料</button>
         </form>
       </div>
-
-      <!-- 第二層表單 -->
       <div class="border border-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm bg-white">
-        <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-bold p-4 flex justify-between items-center focus:outline-none transition">
-          <span>➕ 展開填寫更多進階資料 (選填)</span>
-          <span id="advToggleIcon">▼</span>
-        </button>
+        <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 text-gray-700 text-sm font-bold p-4 flex justify-between"><span>➕ 展開填寫進階資料 (選填)</span><span id="advToggleIcon">▼</span></button>
         <div id="advancedFields" class="hidden p-5 space-y-4 border-t border-gray-200">
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
-          <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存進階詳細資料</button>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border p-2 rounded-lg outline-none"></div>
+          <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg mt-2">儲存進階詳細資料</button>
         </div>
       </div>
-      
-      <!-- 初始超級管理員註冊按鈕 -->
-      <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 rounded-lg shadow mb-4 transition border-2 border-yellow-400">
-        👑 註冊為初始超級管理員
-      </button>
-
-      <!-- 系統後台入口 (超管與一般管理員皆可見) -->
-      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg shadow transition mb-2">⚙️ 進入系統管理後台</button>
+      <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 註冊初始超級管理員</button>
+      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg mb-2">⚙️ 進入系統管理後台</button>
     </div>
 
-    <!-- 視圖：系統管理後台 (整合搜尋、變更身分、授權) -->
     <div id="view-admin" class="view-section hidden">
       <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 shadow-sm mb-4">
         <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🔍 會員查詢與權限管理</h2>
-        <p class="text-sm text-gray-600 mb-4">請輸入會員姓名或專屬代碼來進行搜尋與變更身分。</p>
-        
-        <div class="flex gap-2 mb-4">
-          <input type="text" id="searchKeyword" class="w-full border border-gray-300 p-3 rounded-lg outline-none" placeholder="輸入姓名或代碼">
-          <button onclick="searchMemberBtn()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-lg font-bold transition">搜尋</button>
-        </div>
-        
-        <!-- 搜尋結果區 -->
-        <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden">
-          <!-- 動態生成結果 -->
-        </div>
+        <div class="flex gap-2 mb-4"><input type="text" id="searchKeyword" class="w-full border p-3 rounded-lg outline-none" placeholder="輸入姓名或代碼"><button onclick="searchMemberBtn()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">搜尋</button></div>
+        <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden"></div>
       </div>
-
-      <div class="bg-white p-6 rounded-xl border border-slate-200 mb-4"><h2 class="text-xl font-bold mb-4">⚙️ 建立新活動</h2><button class="w-full bg-slate-800 text-white py-3 rounded-lg">建立 (保留功能)</button></div>
+      <div class="bg-white p-6 rounded-xl border border-red-200 border-t-4 border-t-red-700 shadow-sm mb-4">
+        <h2 class="text-xl font-bold text-red-800 mb-4 border-b pb-2">📅 建立專屬活動</h2>
+        <form id="createEventForm" class="space-y-4">
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動主標題 <span class="text-red-500">*</span></label><input type="text" id="evTitle" class="w-full border p-2 rounded-lg" required></div>
+          <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm font-semibold text-gray-600 mb-1">日期時間</label><input type="datetime-local" id="evDate" class="w-full border p-2 rounded-lg" required></div><div><label class="block text-sm font-semibold text-gray-600 mb-1">地點</label><input type="text" id="evLoc" class="w-full border p-2 rounded-lg"></div></div>
+          <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm font-semibold text-gray-600 mb-1">限定參與身分</label><input type="text" id="evRole" placeholder="例：理監事" class="w-full border p-2 rounded-lg"></div><div><label class="block text-sm font-semibold text-gray-600 mb-1">限定屆數</label><input type="text" id="evCohort" placeholder="例：70-75屆" class="w-full border p-2 rounded-lg"></div></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">內文說明</label><textarea id="evContent" rows="4" class="w-full border p-2 rounded-lg"></textarea></div>
+          <div class="bg-red-50 p-3 rounded-lg border border-red-100"><label class="block text-sm text-red-800 mb-1">宣傳圖片 (選傳)</label><input type="file" id="evImage" accept="image/*" class="text-xs"></div>
+          <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg">建立活動與專屬報到表</button>
+        </form>
+      </div>
     </div>
 
-    <!-- 保留的活動報到與預告 -->
-    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
-    <div id="view-events" class="view-section hidden"><h2 class="text-xl font-bold text-blue-900 mb-4 px-1">活動預告</h2></div>
+    <div id="view-events" class="view-section hidden">
+      <h2 class="text-xl font-bold text-blue-900 mb-4 px-1 flex justify-between items-center"><span>近期活動預告</span><button onclick="loadEvents()" class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded">🔄 重整</button></h2>
+      <div id="eventsListContainer" class="space-y-4 pb-4"></div>
+    </div>
+
+    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
   </div>
 
   <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around items-center h-[65px] z-50 pb-2">
@@ -127,225 +119,16 @@
     <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
   </nav>
 
+  <script src="config.js"></script>
+  <script src="member.js"></script>
+  <script src="admin.js"></script>
+  <script src="event.js"></script>
+  <script src="main.js"></script>
+  
   <script>
-    const MY_LIFF_ID = "2011351908-6yan9QMs"; 
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
-    let currentUserLineId = "";
-    let isSuperAdminUser = false; // 紀錄當前登入者是否為超管，用以開放授權按鈕
-
-    function maskPhone(phone) { 
-      if (!phone) return "尚未設定";
-      let pStr = phone.toString();
-      if (pStr.length === 9 && !pStr.startsWith('0')) pStr = '0' + pStr;
-      if (pStr.length >= 10) return pStr.substring(0, 2) + "***" + pStr.slice(-5);
-      return pStr; 
-    }
-    function maskAddress(addr) { return (!addr) ? "未提供" : (addr.length <= 6 ? addr : addr.substring(0, 5) + "***" + addr.substring(addr.length - 3)); }
-    function toggleAdvanced() {
-      const advBox = document.getElementById('advancedFields');
-      const icon = document.getElementById('advToggleIcon');
-      if (advBox.classList.contains('hidden')) { advBox.classList.remove('hidden'); icon.innerText = "▲"; } 
-      else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
-    }
-    
-    // 生成屆數，並在最下方加入 ** 非校友選項
-    function generateCohortOptions() {
-      const select = document.getElementById('userCohort');
-      const currentCohort = new Date().getFullYear() - 1939; 
-      for (let i = 1; i <= 120; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.text = `第 ${i} 屆 (民國 ${i+28} 年 / 西元 ${i+1939} 年)`;
-        if (i === currentCohort) option.selected = true;
-        select.appendChild(option);
-      }
-      const specialOption = document.createElement('option');
-      specialOption.value = "**";
-      specialOption.text = "顧問/非校友 (**)";
-      select.appendChild(specialOption);
-    }
-
-    function updateUniqueIdPreview() {
-      const cohort = document.getElementById('userCohort').value;
-      let phone = document.getElementById('userPhone').value;
-      const display = document.getElementById('cardUniqueId');
-      if (cohort && phone && phone.length >= 5) {
-        display.innerText = `${cohort}-${phone.slice(-5)}`;
-        display.classList.replace('text-slate-700', 'text-blue-700');
-      } else {
-        display.innerText = "尚未產生";
-        display.classList.replace('text-blue-700', 'text-slate-700');
-      }
-    }
-
-    async function initializeApp() {
-      generateCohortOptions(); 
-      try {
-        await liff.init({ liffId: MY_LIFF_ID });
-        if (liff.isLoggedIn()) {
-          currentUserLineId = (await liff.getProfile()).userId;
-          checkUserData(currentUserLineId);
-        } else liff.login();
-      } catch (err) { document.getElementById('statusMsg').innerText = "系統初始化失敗：" + err.message; }
-    }
-
-    async function checkUserData(lineId) {
-      document.getElementById('statusMsg').innerText = "正在讀取資料...";
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'checkUser', lineUserId: lineId }) });
-        const result = await response.json();
-        document.getElementById('loadingView').classList.add('hidden');
-        
-        if (result.profile) {
-          document.getElementById('userName').value = result.profile.name;
-          document.getElementById('userGender').value = result.profile.gender || "男";
-          document.getElementById('userCohort').value = result.profile.cohort;
-          document.getElementById('userPhone').value = result.profile.phone;
-          document.getElementById('userStudentId').value = result.profile.studentId || "";
-          document.getElementById('userEmail').value = result.profile.email || "";
-          document.getElementById('userAddress').value = result.profile.address || "";
-          document.getElementById('userIndustry').value = result.profile.industry || "";
-          document.getElementById('userCompany').value = result.profile.company || "";
-          document.getElementById('userJobTitle').value = result.profile.jobTitle || "";
-          
-          document.getElementById('cardName').innerText = `${result.profile.name} (${result.profile.gender || "男"})`;
-          document.getElementById('cardUniqueId').innerText = result.profile.uniqueId || "尚未產生";
-          document.getElementById('displayRole').innerText = result.profile.role;
-          document.getElementById('cardPhone').innerText = maskPhone(result.profile.phone);
-          document.getElementById('cardStudentId').innerText = result.profile.studentId || "未提供";
-          document.getElementById('cardAddress').innerText = maskAddress(result.profile.address);
-        }
-        
-        isSuperAdminUser = result.isSuperAdmin; // 記錄超管身分
-
-        if (!result.hasSuperAdmin) {
-          document.getElementById('claimSuperBtn').classList.remove('hidden');
-        }
-
-        if (result.status === 'success' && result.isAdmin) { document.getElementById('adminModal').classList.remove('hidden'); } 
-        else { switchTab('profile'); }
-      } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
-    }
-
-    async function claimSuperAdmin() {
-      if(!confirm("確定要將此帳號綁定為『初始超級管理員』嗎？\n綁定後其他人將無法再取得此權限。")) return;
-      document.getElementById('loadingView').classList.remove('hidden');
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'claimSuperAdmin', lineUserId: currentUserLineId }) });
-        const result = await response.json();
-        if (result.status === 'success') { alert("👑 恭喜！您已成為超級管理員。"); location.reload(); } 
-        else { alert("❌ 註冊失敗：" + result.message); document.getElementById('loadingView').classList.add('hidden'); }
-      } catch(err) { alert("❌ 發生錯誤"); document.getElementById('loadingView').classList.add('hidden'); }
-    }
-
-    // ------------------------------------------------
-    // 後台管理員專屬功能：搜尋與變更權限
-    // ------------------------------------------------
-    
-    // 執行搜尋
-    async function searchMemberBtn() {
-      const keyword = document.getElementById('searchKeyword').value;
-      if (!keyword) return;
-      
-      const resDiv = document.getElementById('searchResults');
-      resDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">搜尋中...</p>';
-      resDiv.classList.remove('hidden');
-      
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'searchMember', callerId: currentUserLineId, keyword: keyword }) });
-        const result = await response.json();
-        
-        if (result.status === 'success') {
-          if(result.results.length === 0) {
-            resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">找不到符合的會員</p>';
-            return;
-          }
-          
-          resDiv.innerHTML = '';
-          result.results.forEach(m => {
-            // 建構變更身分的下拉選單與按鈕
-            const roleOptions = ['一般會員(校友)', '理事長', '副理事長', '常務監事', '常務理事', '監事', '理事', '顧問'].map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('');
-            
-            // 只有超級管理員才看得到授權按鈕
-            const grantBtnHtml = isSuperAdminUser ? `<button onclick="grantAdminAction('${m.lineUserId}', '${m.name}')" class="mt-2 w-full bg-purple-100 text-purple-800 border border-purple-300 font-bold py-2 rounded shadow-sm text-sm">👑 設為一般管理員</button>` : '';
-
-            resDiv.innerHTML += `
-              <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div class="flex justify-between items-center mb-2">
-                  <span class="font-bold text-blue-900">${m.name}</span>
-                  <span class="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded">${m.uniqueId}</span>
-                </div>
-                <div class="flex gap-2">
-                  <select id="roleSelect_${m.uniqueId}" class="flex-1 border border-gray-300 p-2 rounded text-sm outline-none">${roleOptions}</select>
-                  <button onclick="updateRoleAction('${m.lineUserId}', '${m.uniqueId}')" class="bg-slate-700 text-white px-3 py-2 rounded text-sm font-bold">更新身分</button>
-                </div>
-                ${grantBtnHtml}
-              </div>
-            `;
-          });
-        }
-      } catch(err) { resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">搜尋發生錯誤</p>'; }
-    }
-
-    // 更新會員身分
-    async function updateRoleAction(targetLineId, uniqueId) {
-      const newRole = document.getElementById(`roleSelect_${uniqueId}`).value;
-      if(!confirm(`確定要將該會員身分變更為「${newRole}」嗎？`)) return;
-      
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMemberRole', callerId: currentUserLineId, targetLineId: targetLineId, newRole: newRole }) });
-        const result = await response.json();
-        if (result.status === 'success') alert("✅ 身分更新成功！");
-        else alert("❌ 更新失敗：" + result.message);
-      } catch(err) { alert("❌ 發生錯誤"); }
-    }
-
-    // 授權一般管理員
-    async function grantAdminAction(targetLineId, name) {
-      if(!confirm(`確定要授予「${name}」一般管理員權限嗎？`)) return;
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'grantAdmin', callerId: currentUserLineId, targetLineId: targetLineId }) });
-        const result = await response.json();
-        if (result.status === 'success') alert("✅ 授權成功！");
-        else alert("❌ 授權失敗：" + result.message);
-      } catch(err) { alert("❌ 發生錯誤"); }
-    }
-    
-    // ------------------------------------------------
-
-    async function saveBasicProfile() {
-      const name = document.getElementById('userName').value;
-      const cohort = document.getElementById('userCohort').value;
-      const phone = document.getElementById('userPhone').value;
-      if (!name || !cohort || !phone) { alert("請完整填寫姓名、畢業屆數與聯絡電話 (此為必填)。"); return; }
-      const btn = document.getElementById('saveBasicBtn');
-      btn.disabled = true; btn.innerText = "資料儲存中...";
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveBasicProfile', lineUserId: currentUserLineId, name: name, gender: document.getElementById('userGender').value, cohort: cohort, phone: phone, studentId: document.getElementById('userStudentId').value }) });
-        const result = await response.json();
-        if (result.status === 'success') { alert("✅ 基本資料儲存成功！"); checkUserData(currentUserLineId); } 
-        else throw new Error(result.message);
-      } catch (error) { alert("❌ 儲存失敗：" + error.message); } finally { btn.disabled = false; btn.innerText = "儲存基本資料"; }
-    }
-
-    async function saveDetailProfile() {
-      if (!document.getElementById('userName').value) { alert("請先完成並儲存上方的「基本會員資料」。"); return; }
-      const btn = document.getElementById('saveDetailBtn');
-      btn.disabled = true; btn.innerText = "進階資料儲存中...";
-      try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveDetailProfile', lineUserId: currentUserLineId, email: document.getElementById('userEmail').value, address: document.getElementById('userAddress').value, industry: document.getElementById('userIndustry').value, company: document.getElementById('userCompany').value, jobTitle: document.getElementById('userJobTitle').value }) });
-        const result = await response.json();
-        if (result.status === 'success') { alert("✅ 進階詳細資料已寫入！"); checkUserData(currentUserLineId); } 
-        else throw new Error(result.message);
-      } catch (error) { alert("❌ 儲存失敗：" + error.message); } finally { btn.disabled = false; btn.innerText = "儲存進階詳細資料"; }
-    }
-
-    function verifyAdminPwd() { if (document.getElementById('adminPwd').value === "tcfsh01") { document.getElementById('adminModal').classList.add('hidden'); switchTab('admin'); document.getElementById('adminEntryBtn').classList.remove('hidden'); } else { document.getElementById('pwdErrorMsg').classList.remove('hidden'); } }
-    function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); switchTab('profile'); }
-    function switchTab(tabName) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabName}`).classList.remove('hidden'); ['profile', 'checkin', 'events'].forEach(id => { const btn = document.getElementById(`tab-${id}`); if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); }); }
+    // 綁定輸入框即時預覽事件 (放在 HTML 底部確保 DOM 已經載入)
     document.getElementById('userCohort').addEventListener('change', updateUniqueIdPreview);
     document.getElementById('userPhone').addEventListener('input', updateUniqueIdPreview);
-    window.onload = initializeApp;
   </script>
 </body>
 </html>
