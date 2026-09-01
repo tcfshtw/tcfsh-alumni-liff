@@ -1,65 +1,69 @@
-// 檔案：main.js (部分更新)
+/**
+ * 檔案：Main.gs
+ * 說明：系統主路由 (Router)、設定檔與共用工具模組
+ */
 
-// 在最上方加入這行，用來儲存當前會員資料
-window.currentUserProfile = null;
+function getConfig() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  return {
+    MAIN_SPREADSHEET_ID: props.MAIN_SPREADSHEET_ID,
+    ADMIN_SHEET: 'System_Admins',
+    BASIC_SHEET: 'System_Members_Basic',
+    DETAIL_SHEET: 'System_Members_Detail',
+    EVENTS_SHEET: 'System_Events',
+    EVENTS_FOLDER_ID: '1Ust0XCERJUskaocV_Yg9mNYknh4wbej1'
+  };
+}
 
-async function initializeApp() {
-  generateCohortOptions(); 
+function doGet(e) { return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON); }
+
+function doPost(e) {
+  const successResponse = ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
   try {
-    await liff.init({ liffId: MY_LIFF_ID });
-    if (liff.isLoggedIn()) {
-      currentUserLineId = (await liff.getProfile()).userId;
-      checkUserData(currentUserLineId);
-    } else liff.login();
-  } catch (err) { document.getElementById('statusMsg').innerText = "系統初始化失敗：" + err.message; }
-}
+    if (!e || !e.postData || !e.postData.contents) return successResponse;
+    const postData = JSON.parse(e.postData.contents);
+    const action = postData.action;
 
-async function checkUserData(lineId) {
-  document.getElementById('statusMsg').innerText = "正在讀取資料...";
-  try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'checkUser', lineUserId: lineId }) });
-    const result = await response.json();
-    document.getElementById('loadingView').classList.add('hidden');
+    // 會員與權限路由
+    if (action === 'checkUser') {
+      const adminCheck = checkUserRole(postData.lineUserId);
+      const profileData = getMemberProfile(postData.lineUserId);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', isAdmin: adminCheck.isAdmin, isSuperAdmin: adminCheck.isSuperAdmin, hasSuperAdmin: adminCheck.hasSuperAdmin, profile: profileData })).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (action === 'saveBasicProfile') return ContentService.createTextOutput(JSON.stringify(saveBasicProfile(postData))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'saveDetailProfile') return ContentService.createTextOutput(JSON.stringify(saveDetailProfile(postData))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'getAllMembersLite') return ContentService.createTextOutput(JSON.stringify(getAllMembersLite(postData.callerId))).setMimeType(ContentService.MimeType.JSON);
     
-    if (result.profile) {
-      window.currentUserProfile = result.profile; // 🌟 儲存到全域變數，供活動系統判斷資格
-      fillMemberForm(result.profile); 
-      renderMemberCard(result.profile); 
-    }
+    // 後台管理路由
+    if (action === 'claimSuperAdmin') return ContentService.createTextOutput(JSON.stringify(claimSuperAdmin(postData.lineUserId))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'searchMember') return ContentService.createTextOutput(JSON.stringify(searchMember(postData.callerId, postData.keyword))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'updateMemberRole') return ContentService.createTextOutput(JSON.stringify(updateMemberRole(postData.callerId, postData.targetLineId, postData.newRole))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'grantAdmin') return ContentService.createTextOutput(JSON.stringify(grantAdmin(postData.callerId, postData.targetLineId))).setMimeType(ContentService.MimeType.JSON);
+
+    // 活動系統路由
+    if (action === 'createEvent') return ContentService.createTextOutput(JSON.stringify(createEvent(postData))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'getEvents') return ContentService.createTextOutput(JSON.stringify(getEvents())).setMimeType(ContentService.MimeType.JSON);
     
-    isSuperAdminUser = result.isSuperAdmin; 
+    // 桌次系統路由
+    if (action === 'getSeatingData') return ContentService.createTextOutput(JSON.stringify(getSeatingData(postData.eventId))).setMimeType(ContentService.MimeType.JSON);
+    if (action === 'saveSeatingData') return ContentService.createTextOutput(JSON.stringify(saveSeatingData(postData.eventId, postData.seatingData))).setMimeType(ContentService.MimeType.JSON);
 
-    if (!result.hasSuperAdmin) {
-      document.getElementById('claimSuperBtn').classList.remove('hidden');
-    }
-
-    if (result.status === 'success' && result.isAdmin) { 
-      document.getElementById('adminModal').classList.remove('hidden'); 
-    } else { 
-      switchTab('profile'); 
-    }
-  } catch (err) { 
-    document.getElementById('loadingView').classList.add('hidden'); 
-    switchTab('profile'); 
-  }
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "未知的動作" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) { return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON); }
 }
 
-// ... 保留 switchTab 與 toggleAdvanced 等函式 ...
-function switchTab(tabName) { 
-  document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
-  document.getElementById(`view-${tabName}`).classList.remove('hidden'); 
-  ['profile', 'checkin', 'events'].forEach(id => { 
-    const btn = document.getElementById(`tab-${id}`); 
-    if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); 
-  });
-  if (tabName === 'events') loadEvents(); 
+function safeText(val) {
+  if (val === null || val === undefined) return "";
+  let str = val.toString().trim();
+  if (str.startsWith('0')) return "'" + str;
+  return str;
 }
 
-function toggleAdvanced() {
-  const advBox = document.getElementById('advancedFields');
-  const icon = document.getElementById('advToggleIcon');
-  if (advBox.classList.contains('hidden')) { advBox.classList.remove('hidden'); icon.innerText = "▲"; } 
-  else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
+function getDetailSheetName(cohort) {
+  if (cohort === '**') return 'Detail_NonAlumni'; 
+  const c = parseInt(cohort, 10);
+  if (isNaN(c)) return 'Detail_Unknown'; 
+  if (c <= 29) return 'Detail_1_29';
+  const start = Math.floor((c - 30) / 5) * 5 + 30;
+  return `Detail_${start}_${start+4}`;
 }
-
-window.onload = initializeApp;
