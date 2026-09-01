@@ -83,7 +83,10 @@
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位/職稱</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
+          
+          <!-- 將服務單位與職稱拆分 -->
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
           
           <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存進階詳細資料</button>
         </div>
@@ -181,6 +184,7 @@
           document.getElementById('userAddress').value = result.profile.address || "";
           document.getElementById('userIndustry').value = result.profile.industry || "";
           document.getElementById('userCompany').value = result.profile.company || "";
+          document.getElementById('userJobTitle').value = result.profile.jobTitle || ""; // 填入職稱
           
           document.getElementById('cardName').innerText = `${result.profile.name} (${result.profile.gender || "男"})`;
           document.getElementById('cardUniqueId').innerText = result.profile.uniqueId || "尚未產生";
@@ -244,7 +248,8 @@
             email: document.getElementById('userEmail').value,
             address: document.getElementById('userAddress').value,
             industry: document.getElementById('userIndustry').value,
-            company: document.getElementById('userCompany').value
+            company: document.getElementById('userCompany').value,
+            jobTitle: document.getElementById('userJobTitle').value // 拋送職稱
           })
         });
         const result = await response.json();
