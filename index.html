@@ -50,7 +50,6 @@
         </div>
         
         <form id="memberForm" class="space-y-4">
-          <!-- 專屬代碼顯示區 (唯讀) -->
           <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
             <label class="block text-xs font-bold text-gray-500 mb-1">您的專屬身分代碼 (屆數-電話)</label>
             <div id="displayUniqueId" class="text-lg font-mono font-bold text-slate-700 tracking-wider">尚未產生</div>
@@ -64,8 +63,7 @@
           <div>
             <label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數</label>
             <select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-              <option value="" disabled selected>請選擇畢業屆數...</option>
-              <!-- 選項將由 JS 動態生成 -->
+              <!-- 選項將由 JS 動態生成，帶有民國與西元年份 -->
             </select>
           </div>
 
@@ -73,8 +71,14 @@
             <label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話</label>
             <input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如：0912345678">
           </div>
+
+          <!-- 新增學號欄位 (選填) -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label>
+            <input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入在學學號">
+          </div>
           
-          <button type="button" onclick="saveProfile()" id="saveProfileBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow transition">儲存 / 更新資料</button>
+          <button type="button" onclick="saveProfile()" id="saveProfileBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow transition mt-2">儲存 / 更新資料</button>
         </form>
       </div>
       
@@ -112,18 +116,28 @@
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
     let currentUserLineId = "";
 
-    // 1. 動態生成 1 到 120 屆的下拉選單
+    // 動態生成屆數選項，包含民國與西元年，並預設定位在當下年份
     function generateCohortOptions() {
       const select = document.getElementById('userCohort');
+      const currentYear = new Date().getFullYear(); 
+      // 根據公式推算今年的畢業屆數 (民國年 = 屆數 + 28)
+      const currentCohort = currentYear - 1939; 
+
       for (let i = 1; i <= 120; i++) {
+        const rocYear = i + 28;
+        const gregorianYear = rocYear + 1911;
         const option = document.createElement('option');
         option.value = i;
-        option.text = `第 ${i} 屆`;
+        option.text = `第 ${i} 屆 (民國 ${rocYear} 年 / 西元 ${gregorianYear} 年畢業)`;
+        
+        // 透過 HTML 原生屬性，讓選單開啟時自動跳轉至當下年份
+        if (i === currentCohort) {
+          option.selected = true;
+        }
         select.appendChild(option);
       }
     }
 
-    // 2. 即時預覽專屬代碼
     function updateUniqueIdPreview() {
       const cohort = document.getElementById('userCohort').value;
       const phone = document.getElementById('userPhone').value;
@@ -131,18 +145,16 @@
       
       if (cohort && phone) {
         display.innerText = `${cohort}-${phone}`;
-        display.classList.remove('text-slate-700');
-        display.classList.add('text-blue-700');
+        display.classList.replace('text-slate-700', 'text-blue-700');
       } else {
         display.innerText = "尚未產生";
-        display.classList.remove('text-blue-700');
-        display.classList.add('text-slate-700');
+        display.classList.replace('text-blue-700', 'text-slate-700');
       }
     }
 
     async function initializeApp() {
       try {
-        generateCohortOptions(); // 載入屆數選項
+        generateCohortOptions(); 
         await liff.init({ liffId: MY_LIFF_ID });
         
         if (liff.isLoggedIn()) {
@@ -157,7 +169,6 @@
       }
     }
 
-    // 呼叫 GAS 檢查身分與載入資料
     async function checkUserData(lineId) {
       document.getElementById('statusMsg').innerText = "正在讀取您的資料...";
       try {
@@ -168,16 +179,15 @@
         const result = await response.json();
         document.getElementById('loadingView').classList.add('hidden');
         
-        // 如果資料庫已有此人資料，自動填入表單
         if (result.profile) {
           document.getElementById('userName').value = result.profile.name;
           document.getElementById('userCohort').value = result.profile.cohort;
           document.getElementById('userPhone').value = result.profile.phone;
+          document.getElementById('userStudentId').value = result.profile.studentId || ""; // 載文學號
           document.getElementById('displayRole').innerText = result.profile.role;
-          updateUniqueIdPreview(); // 更新代碼顯示
+          updateUniqueIdPreview(); 
         }
         
-        // 管理員權限判定
         if (result.status === 'success' && result.isAdmin) {
           document.getElementById('adminModal').classList.remove('hidden');
         } else {
@@ -189,11 +199,11 @@
       }
     }
 
-    // 儲存會員資料
     async function saveProfile() {
       const name = document.getElementById('userName').value;
       const cohort = document.getElementById('userCohort').value;
       const phone = document.getElementById('userPhone').value;
+      const studentId = document.getElementById('userStudentId').value; // 取得學號
       const btn = document.getElementById('saveProfileBtn');
 
       if (!name || !cohort || !phone) {
@@ -212,7 +222,8 @@
             lineUserId: currentUserLineId,
             name: name,
             cohort: cohort,
-            phone: phone
+            phone: phone,
+            studentId: studentId // 封包夾帶學號
           })
         });
         const result = await response.json();
@@ -230,7 +241,6 @@
       }
     }
 
-    // 密碼與 Tab 切換邏輯 (與前次相同)
     function verifyAdminPwd() {
       if (document.getElementById('adminPwd').value === "tcfsh01") {
         document.getElementById('adminModal').classList.add('hidden');
