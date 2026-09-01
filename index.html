@@ -3,79 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>臺中一中校友會 - 桌次看板</title>
+  <title>校友會會員系統</title>
+  <!-- 載入 Tailwind CSS 框架來美化排版 -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .status-uncheck { background-color: #FEF08A; border-color: #EAB308; color: #713F12; }
-    .status-checked { background-color: #FFFFFF; border-color: #22C55E; color: #0F172A; }
-  </style>
+  <!-- 載入 LINE 官方的 LIFF SDK -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 md:p-6 font-sans">
-  <div class="max-w-7xl mx-auto">
-    <header class="bg-white rounded-xl shadow-md p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-      <div>
-        <h1 class="text-2xl font-extrabold text-slate-800">臺中一中校友會 桌次簽到看板</h1>
-      </div>
-      <div class="flex items-center gap-6">
-        <div class="text-center"><div class="text-xs text-slate-400">總出席</div><div id="statTotal" class="text-2xl font-black">0</div></div>
-        <div class="text-center"><div class="text-xs text-slate-400">已報到</div><div id="statCheckedIn" class="text-2xl font-black text-green-600">0</div></div>
-        <button onclick="loadBoardData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">重新整理</button>
-      </div>
-    </header>
-    <div id="tablesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">載入中...</div>
+<body class="bg-slate-100 min-h-screen p-6 font-sans">
+  <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-md text-center">
+    <h1 class="text-2xl font-bold mb-4">校友會系統連線測試</h1>
+    <p id="statusMsg" class="text-gray-500 mb-4">正在載入 LINE 授權中...</p>
+    
+    <!-- 顯示使用者的 LINE ID 的區塊 (預設隱藏，成功抓取後顯示) -->
+    <div id="profileBox" class="hidden p-4 bg-blue-50 rounded-lg">
+      <p class="text-sm text-blue-800 font-bold mb-2">成功抓取您的 LINE ID：</p>
+      <p id="userIdDisplay" class="text-xs text-gray-700 break-all"></p>
+    </div>
   </div>
 
   <script>
-    // ⚠️ 這裡非常重要！請將下方的字串替換為你剛剛在 GAS 發布的 /exec 網址
-    const API_URL = "https://script.google.com/macros/s/你的_GAS_網址ID/exec";
+    // 1. 填入你專屬的 LIFF ID
+    const MY_LIFF_ID = "2011351908-6yan9QMs"; 
+    
+    // 2. 這是你稍早發布的 GAS API 網址 (負責寫入/讀取 Google Sheets)
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
 
-    async function loadBoardData() {
+    // 初始化 LIFF 應用程式
+    async function initializeLiff() {
       try {
-        // 向 GAS 請求資料
-        const res = await fetch(`${API_URL}?action=getBoardData`);
-        const data = await res.json();
-        if(data.status === 'success') renderBoard(data);
+        await liff.init({ liffId: MY_LIFF_ID });
+        
+        // 檢查使用者是否已登入
+        if (liff.isLoggedIn()) {
+          getUserProfileAndConnectDatabase();
+        } else {
+          // 若未登入，強制跳轉至 LINE 登入畫面
+          liff.login();
+        }
       } catch (err) {
-        console.error("載入失敗", err);
+        document.getElementById('statusMsg').innerText = "LIFF 初始化失敗：" + err.message;
       }
     }
 
-    function renderBoard(res) {
-      document.getElementById('statTotal').innerText = res.stats.total;
-      document.getElementById('statCheckedIn').innerText = res.stats.checkedIn;
-      
-      const grid = document.getElementById('tablesGrid');
-      grid.innerHTML = '';
-
-      for (const [tableName, guests] of Object.entries(res.tables)) {
-        let card = `<div class="bg-white rounded-xl shadow-sm border p-4"><h2 class="font-bold mb-3">${tableName}</h2><div class="grid grid-cols-2 gap-2">`;
-        guests.forEach(g => {
-          const isChecked = (g.status === '已報到');
-          const style = isChecked ? 'status-checked shadow-sm' : 'status-uncheck';
-          card += `
-            <div onclick="toggleCheckIn('${g.uuid}')" class="cursor-pointer p-2.5 rounded-lg border flex flex-col ${style}">
-              <div class="text-sm font-semibold truncate">#${g.seatNum} ${g.guestName}</div>
-              <div class="text-[10px] opacity-70 mt-1">${isChecked ? '已報到' : '尚未報到'}</div>
-            </div>`;
-        });
-        card += `</div></div>`;
-        grid.innerHTML += card;
-      }
-    }
-
-    async function toggleCheckIn(uuid) {
+    // 取得使用者資料並傳送給 GAS 進行連線測試
+    async function getUserProfileAndConnectDatabase() {
       try {
-        await fetch(API_URL, {
+        document.getElementById('statusMsg').innerText = "正在讀取您的資料...";
+        
+        // 獲取使用者的基本資料
+        const profile = await liff.getProfile();
+        const lineUserId = profile.userId;
+
+        // 將取得的 LINE ID 顯示在網頁上
+        document.getElementById('profileBox').classList.remove('hidden');
+        document.getElementById('userIdDisplay').innerText = lineUserId;
+        document.getElementById('statusMsg').innerText = "開始與 GAS 資料庫連線...";
+
+        // 使用 fetch 將 LINE ID 以 POST 方式傳遞給你的 GAS API
+        const response = await fetch(GAS_API_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'toggleCheckIn', uuid: uuid })
+          body: JSON.stringify({
+            action: 'checkUser',
+            lineUserId: lineUserId
+          })
         });
-        loadBoardData(); // 點擊後重新載入
+
+        const result = await response.json();
+        
+        // 如果 GAS 成功回傳資料，更新畫面狀態
+        if (result.status === 'success') {
+          document.getElementById('statusMsg').innerText = "與資料庫連線成功！";
+          document.getElementById('statusMsg').classList.add('text-green-600');
+        } else {
+          document.getElementById('statusMsg').innerText = "連線異常：" + result.message;
+        }
+
       } catch (err) {
-        console.error(err);
+        document.getElementById('statusMsg').innerText = "資料庫連線失敗：" + err.message;
       }
     }
 
-    window.onload = loadBoardData;
+    // 網頁完全載入後，立刻執行初始化流程
+    window.onload = initializeLiff;
   </script>
 </body>
 </html>
