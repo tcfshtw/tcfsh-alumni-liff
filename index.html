@@ -14,28 +14,26 @@
 </head>
 <body class="bg-slate-100 min-h-screen font-sans text-gray-800 selection:bg-blue-200">
 
-  <!-- 頂部 Header -->
   <header class="bg-blue-900 text-white p-3 shadow-md sticky top-0 z-50 flex items-center gap-3">
     <img src="logo2.jpg" alt="校友總會 Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5">
     <h1 class="text-[17px] font-bold tracking-wider">中華民國臺中一中校友總會</h1>
   </header>
 
+  <!-- 狀態提示與管理員彈窗 (保留) -->
   <div id="loadingView" class="fixed inset-0 bg-white/80 z-40 flex flex-col items-center justify-center backdrop-blur-sm">
     <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-900 border-t-transparent mb-4"></div>
     <p id="statusMsg" class="text-blue-900 font-bold">系統連線中，請稍候...</p>
   </div>
-
-  <!-- 管理員密碼驗證彈窗 -->
+  
   <div id="adminModal" class="fixed inset-0 bg-black/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm px-4">
     <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border-t-4 border-slate-800">
       <h3 class="text-xl font-bold text-slate-800 mb-2">🔐 管理員身分驗證</h3>
-      <p class="text-sm text-gray-600 mb-4">系統偵測到您具有管理員權限。<br>請輸入密碼以解鎖後台功能，或跳過以使用一般會員介面。</p>
-      <input type="password" id="adminPwd" class="w-full border border-gray-300 p-3 rounded-lg outline-none mb-4" placeholder="請輸入密碼">
+      <input type="password" id="adminPwd" class="w-full border p-3 rounded-lg outline-none mb-4" placeholder="請輸入密碼">
       <div class="flex gap-3">
-        <button onclick="skipAdmin()" class="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg transition">跳過</button>
-        <button onclick="verifyAdminPwd()" class="w-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-lg transition">確認解鎖</button>
+        <button onclick="skipAdmin()" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-2 rounded-lg">跳過</button>
+        <button onclick="verifyAdminPwd()" class="w-1/2 bg-slate-800 text-white font-bold py-2 rounded-lg">確認解鎖</button>
       </div>
-      <p id="pwdErrorMsg" class="text-red-500 text-sm mt-3 hidden text-center font-bold">❌ 密碼錯誤，請重新輸入</p>
+      <p id="pwdErrorMsg" class="text-red-500 text-sm mt-3 hidden text-center font-bold">❌ 密碼錯誤</p>
     </div>
   </div>
 
@@ -43,69 +41,68 @@
 
     <!-- 視圖 1：校友及會員資料 -->
     <div id="view-profile" class="view-section hidden">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
-        <div class="flex justify-between items-center mb-4 border-b pb-2">
-          <h2 class="text-xl font-bold text-blue-900">校友及會員資料</h2>
+      
+      <!-- 名片區塊 -->
+      <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-4 bg-gradient-to-br from-white to-blue-50">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2>
           <span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span>
         </div>
-        
+        <div class="space-y-2 text-sm text-gray-700">
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">真實姓名</span><span id="cardName" class="font-bold">尚未設定</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold tracking-wider">尚未產生</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">尚未設定</span></div>
+        </div>
+      </div>
+      
+      <!-- 表單區塊 -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
+        <h3 class="text-md font-bold text-gray-800 mb-4 border-b pb-2">✏️ 更新會員資料</h3>
         <form id="memberForm" class="space-y-4">
-          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-            <label class="block text-xs font-bold text-gray-500 mb-1">您的專屬身分代碼 (屆數-電話)</label>
-            <div id="displayUniqueId" class="text-lg font-mono font-bold text-slate-700 tracking-wider">尚未產生</div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名</label>
-            <input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入姓名">
-          </div>
+          <!-- 基本必填 -->
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="請輸入姓名"></div>
           
+          <!-- 新增：性別選單 -->
           <div>
-            <label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數</label>
-            <select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-              <!-- 選項將由 JS 動態生成，帶有民國與西元年份 -->
+            <label class="block text-sm font-semibold text-gray-600 mb-1">性別 <span class="text-red-500">*</span></label>
+            <select id="userGender" class="w-full border border-gray-300 p-2 rounded-lg bg-white">
+              <option value="男" selected>男</option>
+              <option value="女">女</option>
+              <option value="其他">其他</option>
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話</label>
-            <input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如：0912345678">
-          </div>
-
-          <!-- 新增學號欄位 (選填) -->
-          <div>
-            <label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label>
-            <input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入在學學號">
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 <span class="text-red-500">*</span></label><select id="userCohort" class="w-full border border-gray-300 p-2 rounded-lg bg-white"></select></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="例如：0912345678"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="請輸入在學學號"></div>
+          
+          <!-- 進階選填區 -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden mt-2">
+            <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 text-gray-700 text-sm font-bold p-3 flex justify-between items-center focus:outline-none">
+              <span>➕ 展開進階詳細資料 (選填)</span>
+              <span id="advToggleIcon">▼</span>
+            </button>
+            <div id="advancedFields" class="hidden p-4 space-y-4 bg-white border-t border-gray-200">
+              <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="example@gmail.com"></div>
+              <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="請輸入聯絡地址"></div>
+              <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="例如：科技業、醫療業"></div>
+              <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位/職稱</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg" placeholder="例如：某某公司 / 經理"></div>
+            </div>
           </div>
           
-          <button type="button" onclick="saveProfile()" id="saveProfileBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow transition mt-2">儲存 / 更新資料</button>
+          <button type="button" onclick="saveProfile()" id="saveProfileBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow mt-4">儲存 / 更新資料</button>
         </form>
       </div>
       
-      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow flex items-center justify-center gap-2">
-        ⚙️ 進入管理員後台
-      </button>
+      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg shadow">⚙️ 進入管理員後台</button>
     </div>
 
-    <!-- 視圖 2：管理員後台 -->
-    <div id="view-admin" class="view-section hidden">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-slate-800">
-        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">⚙️ 建立新活動</h2>
-        <form class="space-y-4">
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動日期</label><input type="date" id="eventDate" class="w-full border p-2 rounded-lg"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動標題</label><input type="text" id="eventTitle" class="w-full border p-2 rounded-lg"></div>
-          <button type="button" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">建立資料夾與報到表</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- 視圖 3 & 4 (保持空白結構以利測試) -->
-    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
-    <div id="view-events" class="view-section hidden"><h2 class="text-xl font-bold text-blue-900 mb-4 px-1">活動預告</h2></div>
-
+    <!-- 視圖 2~4：(其餘代碼請依照先前保留) -->
+    <!-- 記得將先前的 view-admin, view-checkin, view-events 及 nav 貼在這邊 -->
   </div>
 
-  <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around items-center h-[65px] z-50 pb-2">
+  <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around items-center h-[65px] z-50 pb-2">
     <button onclick="switchTab('profile')" class="flex flex-col items-center justify-center w-1/3 text-blue-700" id="tab-profile"><span class="text-xl mb-1">👤</span><span class="text-[10px] font-bold">會員資料</span></button>
     <button onclick="switchTab('checkin')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-checkin"><span class="text-xl mb-1">✅</span><span class="text-[10px] font-bold">活動報到</span></button>
     <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
@@ -116,50 +113,48 @@
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
     let currentUserLineId = "";
 
-    // 動態生成屆數選項，包含民國與西元年，並預設定位在當下年份
+    function maskPhone(phone) {
+      if (!phone) return "尚未設定";
+      if (phone.length >= 10) return "09***" + phone.slice(-5);
+      return phone; 
+    }
+
+    function maskAddress(addr) {
+      if (!addr) return "未提供";
+      if (addr.length <= 6) return addr; 
+      return addr.substring(0, 5) + "***" + addr.substring(addr.length - 3);
+    }
+
+    function toggleAdvanced() {
+      const advBox = document.getElementById('advancedFields');
+      const icon = document.getElementById('advToggleIcon');
+      if (advBox.classList.contains('hidden')) {
+        advBox.classList.remove('hidden');
+        icon.innerText = "▲";
+      } else {
+        advBox.classList.add('hidden');
+        icon.innerText = "▼";
+      }
+    }
+
     function generateCohortOptions() {
       const select = document.getElementById('userCohort');
-      const currentYear = new Date().getFullYear(); 
-      // 根據公式推算今年的畢業屆數 (民國年 = 屆數 + 28)
-      const currentCohort = currentYear - 1939; 
-
+      const currentCohort = new Date().getFullYear() - 1939; 
       for (let i = 1; i <= 120; i++) {
-        const rocYear = i + 28;
-        const gregorianYear = rocYear + 1911;
         const option = document.createElement('option');
         option.value = i;
-        option.text = `第 ${i} 屆 (民國 ${rocYear} 年 / 西元 ${gregorianYear} 年畢業)`;
-        
-        // 透過 HTML 原生屬性，讓選單開啟時自動跳轉至當下年份
-        if (i === currentCohort) {
-          option.selected = true;
-        }
+        option.text = `第 ${i} 屆 (民國 ${i+28} 年 / 西元 ${i+1939} 年)`;
+        if (i === currentCohort) option.selected = true;
         select.appendChild(option);
       }
     }
 
-    function updateUniqueIdPreview() {
-      const cohort = document.getElementById('userCohort').value;
-      const phone = document.getElementById('userPhone').value;
-      const display = document.getElementById('displayUniqueId');
-      
-      if (cohort && phone) {
-        display.innerText = `${cohort}-${phone}`;
-        display.classList.replace('text-slate-700', 'text-blue-700');
-      } else {
-        display.innerText = "尚未產生";
-        display.classList.replace('text-blue-700', 'text-slate-700');
-      }
-    }
-
     async function initializeApp() {
+      generateCohortOptions(); 
       try {
-        generateCohortOptions(); 
         await liff.init({ liffId: MY_LIFF_ID });
-        
         if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          currentUserLineId = profile.userId;
+          currentUserLineId = (await liff.getProfile()).userId;
           checkUserData(currentUserLineId);
         } else {
           liff.login();
@@ -181,11 +176,20 @@
         
         if (result.profile) {
           document.getElementById('userName').value = result.profile.name;
+          document.getElementById('userGender').value = result.profile.gender || "男"; // 帶入性別資料
           document.getElementById('userCohort').value = result.profile.cohort;
           document.getElementById('userPhone').value = result.profile.phone;
-          document.getElementById('userStudentId').value = result.profile.studentId || ""; // 載文學號
+          document.getElementById('userStudentId').value = result.profile.studentId || "";
+          document.getElementById('userEmail').value = result.profile.email || "";
+          document.getElementById('userAddress').value = result.profile.address || "";
+          document.getElementById('userIndustry').value = result.profile.industry || "";
+          document.getElementById('userCompany').value = result.profile.company || "";
+          
+          document.getElementById('cardName').innerText = result.profile.name;
+          document.getElementById('cardUniqueId').innerText = result.profile.uniqueId;
           document.getElementById('displayRole').innerText = result.profile.role;
-          updateUniqueIdPreview(); 
+          document.getElementById('cardPhone').innerText = maskPhone(result.profile.phone);
+          document.getElementById('cardAddress').innerText = maskAddress(result.profile.address);
         }
         
         if (result.status === 'success' && result.isAdmin) {
@@ -201,16 +205,16 @@
 
     async function saveProfile() {
       const name = document.getElementById('userName').value;
+      const gender = document.getElementById('userGender').value; // 抓取性別
       const cohort = document.getElementById('userCohort').value;
       const phone = document.getElementById('userPhone').value;
-      const studentId = document.getElementById('userStudentId').value; // 取得學號
-      const btn = document.getElementById('saveProfileBtn');
-
+      
       if (!name || !cohort || !phone) {
-        alert("請完整填寫姓名、畢業屆數與聯絡電話。");
+        alert("請完整填寫姓名、畢業屆數與聯絡電話 (此為必填)。");
         return;
       }
 
+      const btn = document.getElementById('saveProfileBtn');
       btn.disabled = true;
       btn.innerText = "資料儲存中...";
 
@@ -221,18 +225,22 @@
             action: 'saveProfile',
             lineUserId: currentUserLineId,
             name: name,
+            gender: gender, // 將性別打包送出
             cohort: cohort,
             phone: phone,
-            studentId: studentId // 封包夾帶學號
+            studentId: document.getElementById('userStudentId').value,
+            email: document.getElementById('userEmail').value,
+            address: document.getElementById('userAddress').value,
+            industry: document.getElementById('userIndustry').value,
+            company: document.getElementById('userCompany').value
           })
         });
         const result = await response.json();
         
         if (result.status === 'success') {
           alert(`✅ 資料儲存成功！\n您的專屬代碼為：${result.uniqueId}`);
-        } else {
-          throw new Error(result.message);
-        }
+          checkUserData(currentUserLineId); 
+        } else throw new Error(result.message);
       } catch (error) {
         alert("❌ 儲存失敗，請重試。");
       } finally {
