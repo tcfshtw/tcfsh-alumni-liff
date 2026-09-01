@@ -41,7 +41,7 @@
     <!-- 視圖 1：校友及會員資料 -->
     <div id="view-profile" class="view-section hidden">
       
-      <!-- 個人名片區 -->
+      <!-- 個人名片區 (完全無 LINE ID) -->
       <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-4 bg-gradient-to-br from-white to-blue-50">
         <div class="flex justify-between items-center mb-3">
           <h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2>
@@ -53,67 +53,71 @@
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">在學學號</span><span id="cardStudentId" class="font-mono">未提供</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">未提供</span></div>
-          <!-- 用來顯示自己的 LINE ID 供複製 (僅有自己看得到) -->
-          <div class="flex justify-between border-t pt-2 mt-2 border-gray-200"><span class="text-gray-400 font-semibold text-xs">您的 LINE ID (供授權用)</span><span id="selfLineId" class="font-mono text-xs text-gray-400">讀取中</span></div>
         </div>
       </div>
       
-      <!-- 表單區 -->
+      <!-- 第一層表單 -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
         <h3 class="text-md font-bold text-gray-800 mb-4 border-b pb-2">✏️ 更新會員資料</h3>
         <form class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
+            <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
             <div><label class="block text-sm font-semibold text-gray-600 mb-1">性別 <span class="text-red-500">*</span></label><select id="userGender" class="w-full border border-gray-300 p-2 rounded-lg bg-white"><option value="男" selected>男</option><option value="女">女</option><option value="其他">其他</option></select></div>
           </div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 <span class="text-red-500">*</span></label><select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg bg-white"></select></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如：0912345678"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg outline-none" placeholder="例如：0912345678"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
           <button type="button" onclick="saveBasicProfile()" id="saveBasicBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存基本資料</button>
         </form>
       </div>
 
-      <!-- 進階區 -->
+      <!-- 第二層表單 -->
       <div class="border border-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm bg-white">
         <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-bold p-4 flex justify-between items-center focus:outline-none transition">
           <span>➕ 展開填寫更多進階資料 (選填)</span>
           <span id="advToggleIcon">▼</span>
         </button>
         <div id="advancedFields" class="hidden p-5 space-y-4 border-t border-gray-200">
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border border-gray-300 p-2 rounded-lg outline-none"></div>
           <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存進階詳細資料</button>
         </div>
       </div>
       
-      <!-- 初始超級管理員註冊按鈕 (僅在系統無人註冊時顯示) -->
+      <!-- 初始超級管理員註冊按鈕 -->
       <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 rounded-lg shadow mb-4 transition border-2 border-yellow-400">
         👑 註冊為初始超級管理員
       </button>
 
-      <!-- 一般管理員入口 -->
-      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg shadow transition mb-2">⚙️ 進入一般管理員後台</button>
-      
-      <!-- 超級管理員入口 -->
-      <button id="superAdminEntryBtn" onclick="switchTab('superAdmin')" class="hidden w-full bg-purple-900 text-white font-bold py-3 rounded-lg shadow transition">👑 超級管理員專區 (授權系統)</button>
+      <!-- 系統後台入口 (超管與一般管理員皆可見) -->
+      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg shadow transition mb-2">⚙️ 進入系統管理後台</button>
     </div>
 
-    <!-- 視圖：超級管理員專區 -->
-    <div id="view-superAdmin" class="view-section hidden">
-      <div class="bg-white p-6 rounded-xl border border-purple-200 border-t-4 border-t-purple-900 shadow-sm mb-4">
-        <h2 class="text-xl font-bold text-purple-900 mb-4 border-b pb-2">👑 授權新管理員</h2>
-        <p class="text-sm text-gray-600 mb-4">請在下方輸入欲授權對象的 LINE User ID。<br>授權後，該對象即具備一般管理員權限。</p>
-        <input type="text" id="newAdminLineId" class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none mb-4" placeholder="請輸入對方的 LINE ID">
-        <button onclick="grantAdmin()" id="grantAdminBtn" class="w-full bg-purple-900 hover:bg-purple-950 text-white font-bold py-3 rounded-lg shadow transition">賦予一般管理員權限</button>
+    <!-- 視圖：系統管理後台 (整合搜尋、變更身分、授權) -->
+    <div id="view-admin" class="view-section hidden">
+      <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 shadow-sm mb-4">
+        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🔍 會員查詢與權限管理</h2>
+        <p class="text-sm text-gray-600 mb-4">請輸入會員姓名或專屬代碼來進行搜尋與變更身分。</p>
+        
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="searchKeyword" class="w-full border border-gray-300 p-3 rounded-lg outline-none" placeholder="輸入姓名或代碼">
+          <button onclick="searchMemberBtn()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-lg font-bold transition">搜尋</button>
+        </div>
+        
+        <!-- 搜尋結果區 -->
+        <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden">
+          <!-- 動態生成結果 -->
+        </div>
       </div>
+
+      <div class="bg-white p-6 rounded-xl border border-slate-200 mb-4"><h2 class="text-xl font-bold mb-4">⚙️ 建立新活動</h2><button class="w-full bg-slate-800 text-white py-3 rounded-lg">建立 (保留功能)</button></div>
     </div>
 
-    <!-- 其他視圖 -->
-    <div id="view-admin" class="view-section hidden"><div class="bg-white p-6 rounded-xl border border-slate-200"><h2 class="text-xl font-bold mb-4">⚙️ 建立新活動</h2><button class="w-full bg-slate-800 text-white py-3 rounded-lg">建立</button></div></div>
-    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200 flex flex-col items-center justify-center"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
+    <!-- 保留的活動報到與預告 -->
+    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
     <div id="view-events" class="view-section hidden"><h2 class="text-xl font-bold text-blue-900 mb-4 px-1">活動預告</h2></div>
   </div>
 
@@ -127,6 +131,7 @@
     const MY_LIFF_ID = "2011351908-6yan9QMs"; 
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
     let currentUserLineId = "";
+    let isSuperAdminUser = false; // 紀錄當前登入者是否為超管，用以開放授權按鈕
 
     function maskPhone(phone) { 
       if (!phone) return "尚未設定";
@@ -142,6 +147,8 @@
       if (advBox.classList.contains('hidden')) { advBox.classList.remove('hidden'); icon.innerText = "▲"; } 
       else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
     }
+    
+    // 生成屆數，並在最下方加入 ** 非校友選項
     function generateCohortOptions() {
       const select = document.getElementById('userCohort');
       const currentCohort = new Date().getFullYear() - 1939; 
@@ -152,7 +159,12 @@
         if (i === currentCohort) option.selected = true;
         select.appendChild(option);
       }
+      const specialOption = document.createElement('option');
+      specialOption.value = "**";
+      specialOption.text = "顧問/非校友 (**)";
+      select.appendChild(specialOption);
     }
+
     function updateUniqueIdPreview() {
       const cohort = document.getElementById('userCohort').value;
       let phone = document.getElementById('userPhone').value;
@@ -161,7 +173,7 @@
         display.innerText = `${cohort}-${phone.slice(-5)}`;
         display.classList.replace('text-slate-700', 'text-blue-700');
       } else {
-        display.innerText = "尚未產生 (請輸入完整電話)";
+        display.innerText = "尚未產生";
         display.classList.replace('text-blue-700', 'text-slate-700');
       }
     }
@@ -172,7 +184,6 @@
         await liff.init({ liffId: MY_LIFF_ID });
         if (liff.isLoggedIn()) {
           currentUserLineId = (await liff.getProfile()).userId;
-          document.getElementById('selfLineId').innerText = currentUserLineId; // 顯示自己的 ID
           checkUserData(currentUserLineId);
         } else liff.login();
       } catch (err) { document.getElementById('statusMsg').innerText = "系統初始化失敗：" + err.message; }
@@ -205,13 +216,10 @@
           document.getElementById('cardAddress').innerText = maskAddress(result.profile.address);
         }
         
-        // ★ 核心功能：超級管理員按鈕顯示邏輯
+        isSuperAdminUser = result.isSuperAdmin; // 記錄超管身分
+
         if (!result.hasSuperAdmin) {
-          // 如果系統還沒有人註冊，顯示註冊按鈕
           document.getElementById('claimSuperBtn').classList.remove('hidden');
-        } else if (result.isSuperAdmin) {
-          // 如果當前使用者是超管，顯示專屬入口
-          document.getElementById('superAdminEntryBtn').classList.remove('hidden');
         }
 
         if (result.status === 'success' && result.isAdmin) { document.getElementById('adminModal').classList.remove('hidden'); } 
@@ -219,38 +227,91 @@
       } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
     }
 
-    // 註冊為超級管理員
     async function claimSuperAdmin() {
       if(!confirm("確定要將此帳號綁定為『初始超級管理員』嗎？\n綁定後其他人將無法再取得此權限。")) return;
       document.getElementById('loadingView').classList.remove('hidden');
       try {
         const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'claimSuperAdmin', lineUserId: currentUserLineId }) });
         const result = await response.json();
-        if (result.status === 'success') {
-          alert("👑 恭喜！您已成為系統超級管理員。");
-          location.reload(); // 重新整理網頁載入新權限
-        } else { alert("❌ 註冊失敗：" + result.message); document.getElementById('loadingView').classList.add('hidden'); }
+        if (result.status === 'success') { alert("👑 恭喜！您已成為超級管理員。"); location.reload(); } 
+        else { alert("❌ 註冊失敗：" + result.message); document.getElementById('loadingView').classList.add('hidden'); }
       } catch(err) { alert("❌ 發生錯誤"); document.getElementById('loadingView').classList.add('hidden'); }
     }
 
-    // 授權一般管理員
-    async function grantAdmin() {
-      const targetId = document.getElementById('newAdminLineId').value;
-      if (!targetId) { alert("請輸入欲授權的 LINE ID"); return; }
+    // ------------------------------------------------
+    // 後台管理員專屬功能：搜尋與變更權限
+    // ------------------------------------------------
+    
+    // 執行搜尋
+    async function searchMemberBtn() {
+      const keyword = document.getElementById('searchKeyword').value;
+      if (!keyword) return;
       
-      const btn = document.getElementById('grantAdminBtn');
-      btn.disabled = true; btn.innerText = "授權處理中...";
+      const resDiv = document.getElementById('searchResults');
+      resDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">搜尋中...</p>';
+      resDiv.classList.remove('hidden');
       
       try {
-        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'grantAdmin', callerLineId: currentUserLineId, targetLineId: targetId }) });
+        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'searchMember', callerId: currentUserLineId, keyword: keyword }) });
         const result = await response.json();
+        
         if (result.status === 'success') {
-          alert("✅ 授權成功！對方現在已經具備一般管理員權限。");
-          document.getElementById('newAdminLineId').value = "";
-        } else { alert("❌ 授權失敗：" + result.message); }
-      } catch(err) { alert("❌ 發生錯誤"); }
-      finally { btn.disabled = false; btn.innerText = "賦予一般管理員權限"; }
+          if(result.results.length === 0) {
+            resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">找不到符合的會員</p>';
+            return;
+          }
+          
+          resDiv.innerHTML = '';
+          result.results.forEach(m => {
+            // 建構變更身分的下拉選單與按鈕
+            const roleOptions = ['一般會員(校友)', '理事長', '副理事長', '常務監事', '常務理事', '監事', '理事', '顧問'].map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('');
+            
+            // 只有超級管理員才看得到授權按鈕
+            const grantBtnHtml = isSuperAdminUser ? `<button onclick="grantAdminAction('${m.lineUserId}', '${m.name}')" class="mt-2 w-full bg-purple-100 text-purple-800 border border-purple-300 font-bold py-2 rounded shadow-sm text-sm">👑 設為一般管理員</button>` : '';
+
+            resDiv.innerHTML += `
+              <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-bold text-blue-900">${m.name}</span>
+                  <span class="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded">${m.uniqueId}</span>
+                </div>
+                <div class="flex gap-2">
+                  <select id="roleSelect_${m.uniqueId}" class="flex-1 border border-gray-300 p-2 rounded text-sm outline-none">${roleOptions}</select>
+                  <button onclick="updateRoleAction('${m.lineUserId}', '${m.uniqueId}')" class="bg-slate-700 text-white px-3 py-2 rounded text-sm font-bold">更新身分</button>
+                </div>
+                ${grantBtnHtml}
+              </div>
+            `;
+          });
+        }
+      } catch(err) { resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">搜尋發生錯誤</p>'; }
     }
+
+    // 更新會員身分
+    async function updateRoleAction(targetLineId, uniqueId) {
+      const newRole = document.getElementById(`roleSelect_${uniqueId}`).value;
+      if(!confirm(`確定要將該會員身分變更為「${newRole}」嗎？`)) return;
+      
+      try {
+        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMemberRole', callerId: currentUserLineId, targetLineId: targetLineId, newRole: newRole }) });
+        const result = await response.json();
+        if (result.status === 'success') alert("✅ 身分更新成功！");
+        else alert("❌ 更新失敗：" + result.message);
+      } catch(err) { alert("❌ 發生錯誤"); }
+    }
+
+    // 授權一般管理員
+    async function grantAdminAction(targetLineId, name) {
+      if(!confirm(`確定要授予「${name}」一般管理員權限嗎？`)) return;
+      try {
+        const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'grantAdmin', callerId: currentUserLineId, targetLineId: targetLineId }) });
+        const result = await response.json();
+        if (result.status === 'success') alert("✅ 授權成功！");
+        else alert("❌ 授權失敗：" + result.message);
+      } catch(err) { alert("❌ 發生錯誤"); }
+    }
+    
+    // ------------------------------------------------
 
     async function saveBasicProfile() {
       const name = document.getElementById('userName').value;
@@ -274,14 +335,14 @@
       try {
         const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveDetailProfile', lineUserId: currentUserLineId, email: document.getElementById('userEmail').value, address: document.getElementById('userAddress').value, industry: document.getElementById('userIndustry').value, company: document.getElementById('userCompany').value, jobTitle: document.getElementById('userJobTitle').value }) });
         const result = await response.json();
-        if (result.status === 'success') { alert("✅ 進階詳細資料已安全寫入第二層資料庫！"); checkUserData(currentUserLineId); } 
+        if (result.status === 'success') { alert("✅ 進階詳細資料已寫入！"); checkUserData(currentUserLineId); } 
         else throw new Error(result.message);
       } catch (error) { alert("❌ 儲存失敗：" + error.message); } finally { btn.disabled = false; btn.innerText = "儲存進階詳細資料"; }
     }
 
     function verifyAdminPwd() { if (document.getElementById('adminPwd').value === "tcfsh01") { document.getElementById('adminModal').classList.add('hidden'); switchTab('admin'); document.getElementById('adminEntryBtn').classList.remove('hidden'); } else { document.getElementById('pwdErrorMsg').classList.remove('hidden'); } }
     function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); switchTab('profile'); }
-    function switchTab(tabName) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabName}`).classList.remove('hidden'); ['profile', 'checkin', 'events'].forEach(id => { const btn = document.getElementById(`tab-${id}`); if(btn) btn.classList.replace(id === tabName || (id === 'profile' && (tabName === 'admin' || tabName === 'superAdmin')) ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && (tabName === 'admin' || tabName === 'superAdmin')) ? 'text-blue-700' : 'text-gray-400'); }); }
+    function switchTab(tabName) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabName}`).classList.remove('hidden'); ['profile', 'checkin', 'events'].forEach(id => { const btn = document.getElementById(`tab-${id}`); if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); }); }
     document.getElementById('userCohort').addEventListener('change', updateUniqueIdPreview);
     document.getElementById('userPhone').addEventListener('input', updateUniqueIdPreview);
     window.onload = initializeApp;
