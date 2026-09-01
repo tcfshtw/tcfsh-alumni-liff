@@ -20,7 +20,6 @@
     <h1 class="text-[17px] font-bold tracking-wider">中華民國臺中一中校友總會</h1>
   </header>
 
-  <!-- 狀態提示區 -->
   <div id="loadingView" class="fixed inset-0 bg-white/80 z-40 flex flex-col items-center justify-center backdrop-blur-sm">
     <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-900 border-t-transparent mb-4"></div>
     <p id="statusMsg" class="text-blue-900 font-bold">系統連線中，請稍候...</p>
@@ -31,9 +30,7 @@
     <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border-t-4 border-slate-800">
       <h3 class="text-xl font-bold text-slate-800 mb-2">🔐 管理員身分驗證</h3>
       <p class="text-sm text-gray-600 mb-4">系統偵測到您具有管理員權限。<br>請輸入密碼以解鎖後台功能，或跳過以使用一般會員介面。</p>
-      
-      <input type="password" id="adminPwd" class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none mb-4" placeholder="請輸入密碼">
-      
+      <input type="password" id="adminPwd" class="w-full border border-gray-300 p-3 rounded-lg outline-none mb-4" placeholder="請輸入密碼">
       <div class="flex gap-3">
         <button onclick="skipAdmin()" class="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg transition">跳過</button>
         <button onclick="verifyAdminPwd()" class="w-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-lg transition">確認解鎖</button>
@@ -47,19 +44,40 @@
     <!-- 視圖 1：校友及會員資料 -->
     <div id="view-profile" class="view-section hidden">
       <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
-        <h2 class="text-xl font-bold text-blue-900 mb-4 border-b pb-2">校友及會員資料</h2>
-        <div class="mb-4">
-          <label class="block text-sm font-semibold text-gray-600 mb-1">LINE 綁定狀態</label>
-          <div class="text-xs text-green-700 bg-green-50 p-2 rounded border border-green-200 font-mono break-all" id="userIdDisplay">尚未獲取</div>
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+          <h2 class="text-xl font-bold text-blue-900">校友及會員資料</h2>
+          <span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span>
         </div>
-        <form class="space-y-4">
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名</label><input type="text" class="w-full border p-2 rounded-lg" placeholder="請輸入姓名"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 (數字)</label><input type="number" class="w-full border p-2 rounded-lg" placeholder="例如：84"></div>
-          <button type="button" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow">儲存資料</button>
+        
+        <form id="memberForm" class="space-y-4">
+          <!-- 專屬代碼顯示區 (唯讀) -->
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <label class="block text-xs font-bold text-gray-500 mb-1">您的專屬身分代碼 (屆數-電話)</label>
+            <div id="displayUniqueId" class="text-lg font-mono font-bold text-slate-700 tracking-wider">尚未產生</div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名</label>
+            <input type="text" id="userName" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="請輸入姓名">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數</label>
+            <select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <option value="" disabled selected>請選擇畢業屆數...</option>
+              <!-- 選項將由 JS 動態生成 -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話</label>
+            <input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如：0912345678">
+          </div>
+          
+          <button type="button" onclick="saveProfile()" id="saveProfileBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow transition">儲存 / 更新資料</button>
         </form>
       </div>
       
-      <!-- 隱藏的管理員入口 (解鎖後才會出現) -->
       <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow flex items-center justify-center gap-2">
         ⚙️ 進入管理員後台
       </button>
@@ -69,22 +87,20 @@
     <div id="view-admin" class="view-section hidden">
       <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-slate-800">
         <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">⚙️ 建立新活動</h2>
-        <form id="adminEventForm" class="space-y-4">
+        <form class="space-y-4">
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動日期</label><input type="date" id="eventDate" class="w-full border p-2 rounded-lg"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動標題</label><input type="text" id="eventTitle" class="w-full border p-2 rounded-lg" placeholder="例如：年度大會"></div>
-          <button type="button" onclick="submitNewEvent()" id="submitEventBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">建立資料夾與報到表</button>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動標題</label><input type="text" id="eventTitle" class="w-full border p-2 rounded-lg"></div>
+          <button type="button" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">建立資料夾與報到表</button>
         </form>
-        <div id="adminResult" class="mt-4 text-sm font-medium text-center hidden"></div>
       </div>
     </div>
 
-    <!-- 視圖 3 & 4：保留原有的 活動報到、活動預告 區塊... -->
-    <div id="view-checkin" class="view-section hidden space-y-4"><div class="bg-white p-5 rounded-xl shadow-sm border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200"><span class="text-3xl font-extrabold mb-1">✅ 測試按鈕</span></button></div></div>
+    <!-- 視圖 3 & 4 (保持空白結構以利測試) -->
+    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
     <div id="view-events" class="view-section hidden"><h2 class="text-xl font-bold text-blue-900 mb-4 px-1">活動預告</h2></div>
 
   </div>
 
-  <!-- 底部導覽列 -->
   <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around items-center h-[65px] z-50 pb-2">
     <button onclick="switchTab('profile')" class="flex flex-col items-center justify-center w-1/3 text-blue-700" id="tab-profile"><span class="text-xl mb-1">👤</span><span class="text-[10px] font-bold">會員資料</span></button>
     <button onclick="switchTab('checkin')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-checkin"><span class="text-xl mb-1">✅</span><span class="text-[10px] font-bold">活動報到</span></button>
@@ -96,16 +112,43 @@
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
     let currentUserLineId = "";
 
+    // 1. 動態生成 1 到 120 屆的下拉選單
+    function generateCohortOptions() {
+      const select = document.getElementById('userCohort');
+      for (let i = 1; i <= 120; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.text = `第 ${i} 屆`;
+        select.appendChild(option);
+      }
+    }
+
+    // 2. 即時預覽專屬代碼
+    function updateUniqueIdPreview() {
+      const cohort = document.getElementById('userCohort').value;
+      const phone = document.getElementById('userPhone').value;
+      const display = document.getElementById('displayUniqueId');
+      
+      if (cohort && phone) {
+        display.innerText = `${cohort}-${phone}`;
+        display.classList.remove('text-slate-700');
+        display.classList.add('text-blue-700');
+      } else {
+        display.innerText = "尚未產生";
+        display.classList.remove('text-blue-700');
+        display.classList.add('text-slate-700');
+      }
+    }
+
     async function initializeApp() {
       try {
+        generateCohortOptions(); // 載入屆數選項
         await liff.init({ liffId: MY_LIFF_ID });
+        
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
           currentUserLineId = profile.userId;
-          document.getElementById('userIdDisplay').innerText = currentUserLineId;
-          
-          // 向 GAS 檢查是否為管理員
-          checkAdminRole(currentUserLineId);
+          checkUserData(currentUserLineId);
         } else {
           liff.login();
         }
@@ -114,68 +157,97 @@
       }
     }
 
-    // 呼叫 GAS 檢查身分
-    async function checkAdminRole(lineId) {
-      document.getElementById('statusMsg').innerText = "正在驗證您的身分...";
+    // 呼叫 GAS 檢查身分與載入資料
+    async function checkUserData(lineId) {
+      document.getElementById('statusMsg').innerText = "正在讀取您的資料...";
       try {
         const response = await fetch(GAS_API_URL, {
           method: 'POST',
           body: JSON.stringify({ action: 'checkUser', lineUserId: lineId })
         });
         const result = await response.json();
-        
         document.getElementById('loadingView').classList.add('hidden');
         
+        // 如果資料庫已有此人資料，自動填入表單
+        if (result.profile) {
+          document.getElementById('userName').value = result.profile.name;
+          document.getElementById('userCohort').value = result.profile.cohort;
+          document.getElementById('userPhone').value = result.profile.phone;
+          document.getElementById('displayRole').innerText = result.profile.role;
+          updateUniqueIdPreview(); // 更新代碼顯示
+        }
+        
+        // 管理員權限判定
         if (result.status === 'success' && result.isAdmin) {
-          // 如果是管理員，跳出密碼輸入彈窗
           document.getElementById('adminModal').classList.remove('hidden');
         } else {
-          // 一般會員，直接顯示個人資料頁面
           switchTab('profile');
         }
       } catch (err) {
         document.getElementById('loadingView').classList.add('hidden');
-        switchTab('profile'); // 發生錯誤時退回一般頁面
+        switchTab('profile');
       }
     }
 
-    // 驗證管理員密碼
+    // 儲存會員資料
+    async function saveProfile() {
+      const name = document.getElementById('userName').value;
+      const cohort = document.getElementById('userCohort').value;
+      const phone = document.getElementById('userPhone').value;
+      const btn = document.getElementById('saveProfileBtn');
+
+      if (!name || !cohort || !phone) {
+        alert("請完整填寫姓名、畢業屆數與聯絡電話。");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "資料儲存中...";
+
+      try {
+        const response = await fetch(GAS_API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'saveProfile',
+            lineUserId: currentUserLineId,
+            name: name,
+            cohort: cohort,
+            phone: phone
+          })
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          alert(`✅ 資料儲存成功！\n您的專屬代碼為：${result.uniqueId}`);
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (error) {
+        alert("❌ 儲存失敗，請重試。");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "儲存 / 更新資料";
+      }
+    }
+
+    // 密碼與 Tab 切換邏輯 (與前次相同)
     function verifyAdminPwd() {
-      const pwd = document.getElementById('adminPwd').value;
-      if (pwd === "tcfsh01") {
+      if (document.getElementById('adminPwd').value === "tcfsh01") {
         document.getElementById('adminModal').classList.add('hidden');
-        document.getElementById('adminEntryBtn').classList.remove('hidden'); // 顯示進入按鈕
-        switchTab('admin'); // 直接跳轉到後台
+        document.getElementById('adminEntryBtn').classList.remove('hidden');
+        switchTab('admin');
       } else {
         document.getElementById('pwdErrorMsg').classList.remove('hidden');
       }
     }
-
-    // 跳過密碼驗證，以一般身分瀏覽
-    function skipAdmin() {
-      document.getElementById('adminModal').classList.add('hidden');
-      switchTab('profile');
-    }
-
+    function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); switchTab('profile'); }
     function switchTab(tabName) {
       document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
       document.getElementById(`view-${tabName}`).classList.remove('hidden');
-      
       ['profile', 'checkin', 'events'].forEach(id => {
         const btn = document.getElementById(`tab-${id}`);
-        if(btn) {
-          if (id === tabName || (id === 'profile' && tabName === 'admin')) {
-            btn.classList.replace('text-gray-400', 'text-blue-700');
-          } else {
-            btn.classList.replace('text-blue-700', 'text-gray-400');
-          }
-        }
+        if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400');
       });
-    }
-
-    // (保留原本的 submitNewEvent 邏輯...)
-    async function submitNewEvent() {
-       // 同上層樓邏輯
     }
 
     window.onload = initializeApp;
