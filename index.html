@@ -92,7 +92,6 @@
       <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg shadow transition">⚙️ 進入管理員後台</button>
     </div>
 
-    <!-- 其他視圖 -->
     <div id="view-admin" class="view-section hidden"><div class="bg-white p-6 rounded-xl border border-slate-200"><h2 class="text-xl font-bold mb-4">⚙️ 建立新活動</h2><button class="w-full bg-slate-800 text-white py-3 rounded-lg">建立</button></div></div>
     <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200 flex flex-col items-center justify-center transition transform active:scale-95"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
     <div id="view-events" class="view-section hidden"><h2 class="text-xl font-bold text-blue-900 mb-4 px-1">活動預告</h2></div>
@@ -109,19 +108,14 @@
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxmqsLVqwOt9TIZdc3nwlq3_JWTijuEgChhBmgasraHTGtxwpoEm2lL_q-QdSIUYW4Wg/exec"; 
     let currentUserLineId = "";
 
-    // ★ 遮蔽電話函式：保留09與末5碼，中間變星號
     function maskPhone(phone) { 
       if (!phone) return "尚未設定";
       let pStr = phone.toString();
-      // 容錯機制：若長度為9且不是0開頭，自動補0
       if (pStr.length === 9 && !pStr.startsWith('0')) pStr = '0' + pStr;
-      
-      // 若大於等於10碼，取前2碼 + 星號 + 後5碼
       if (pStr.length >= 10) return pStr.substring(0, 2) + "***" + pStr.slice(-5);
       return pStr; 
     }
 
-    // ★ 遮蔽地址函式
     function maskAddress(addr) { return (!addr) ? "未提供" : (addr.length <= 6 ? addr : addr.substring(0, 5) + "***" + addr.substring(addr.length - 3)); }
     
     function toggleAdvanced() {
@@ -131,7 +125,6 @@
       else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
     }
 
-    // 動態生成屆數選單
     function generateCohortOptions() {
       const select = document.getElementById('userCohort');
       const currentCohort = new Date().getFullYear() - 1939; 
@@ -144,7 +137,6 @@
       }
     }
 
-    // 專屬代碼預覽 (僅擷取末5碼)
     function updateUniqueIdPreview() {
       const cohort = document.getElementById('userCohort').value;
       let phone = document.getElementById('userPhone').value;
@@ -179,7 +171,6 @@
         document.getElementById('loadingView').classList.add('hidden');
         
         if (result.profile) {
-          // 填寫真實完整資料到表單 (供編輯用，但隱藏在輸入框內)
           document.getElementById('userName').value = result.profile.name;
           document.getElementById('userGender').value = result.profile.gender || "男";
           document.getElementById('userCohort').value = result.profile.cohort;
@@ -191,7 +182,6 @@
           document.getElementById('userIndustry').value = result.profile.industry || "";
           document.getElementById('userCompany').value = result.profile.company || "";
           
-          // 名片區：展示經過遮蔽的資料與代碼
           document.getElementById('cardName').innerText = `${result.profile.name} (${result.profile.gender || "男"})`;
           document.getElementById('cardUniqueId').innerText = result.profile.uniqueId || "尚未產生";
           document.getElementById('displayRole').innerText = result.profile.role;
@@ -222,15 +212,22 @@
             action: 'saveBasicProfile',
             lineUserId: currentUserLineId,
             name: name, gender: document.getElementById('userGender').value,
-            cohort: cohort, phone: phone, // 送出完整真實號碼
+            cohort: cohort, phone: phone, 
             studentId: document.getElementById('userStudentId').value
           })
         });
         const result = await response.json();
-        if (result.status === 'success') { alert("✅ 基本資料儲存成功！"); checkUserData(currentUserLineId); } 
-        else throw new Error(result.message);
-      } catch (error) { alert("❌ 儲存失敗，請重試。"); } 
-      finally { btn.disabled = false; btn.innerText = "儲存基本資料"; }
+        if (result.status === 'success') { 
+          alert("✅ 基本資料儲存成功！"); 
+          checkUserData(currentUserLineId); 
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (error) { 
+        alert("❌ 儲存失敗：" + error.message); 
+      } finally { 
+        btn.disabled = false; btn.innerText = "儲存基本資料"; 
+      }
     }
 
     async function saveDetailProfile() {
@@ -251,17 +248,23 @@
           })
         });
         const result = await response.json();
-        if (result.status === 'success') { alert("✅ 進階詳細資料已安全寫入第二層資料庫！"); checkUserData(currentUserLineId); } 
-        else throw new Error(result.message);
-      } catch (error) { alert("❌ 儲存失敗，請重試。"); } 
-      finally { btn.disabled = false; btn.innerText = "儲存進階詳細資料"; }
+        if (result.status === 'success') { 
+          alert("✅ 進階詳細資料已安全寫入第二層資料庫！"); 
+          checkUserData(currentUserLineId); 
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (error) { 
+        alert("❌ 儲存失敗：" + error.message); 
+      } finally { 
+        btn.disabled = false; btn.innerText = "儲存進階詳細資料"; 
+      }
     }
 
     function verifyAdminPwd() { if (document.getElementById('adminPwd').value === "tcfsh01") { document.getElementById('adminModal').classList.add('hidden'); switchTab('admin'); document.getElementById('adminEntryBtn').classList.remove('hidden'); } else { document.getElementById('pwdErrorMsg').classList.remove('hidden'); } }
     function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); switchTab('profile'); }
     function switchTab(tabName) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabName}`).classList.remove('hidden'); ['profile', 'checkin', 'events'].forEach(id => { const btn = document.getElementById(`tab-${id}`); if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); }); }
     
-    // 綁定輸入框即時預覽事件
     document.getElementById('userCohort').addEventListener('change', updateUniqueIdPreview);
     document.getElementById('userPhone').addEventListener('input', updateUniqueIdPreview);
 
