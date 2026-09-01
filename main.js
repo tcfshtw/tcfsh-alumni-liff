@@ -1,7 +1,10 @@
-// 檔案：main.js
+// 檔案：main.js (部分更新)
+
+// 在最上方加入這行，用來儲存當前會員資料
+window.currentUserProfile = null;
 
 async function initializeApp() {
-  generateCohortOptions(); // 來自 member.js
+  generateCohortOptions(); 
   try {
     await liff.init({ liffId: MY_LIFF_ID });
     if (liff.isLoggedIn()) {
@@ -19,8 +22,9 @@ async function checkUserData(lineId) {
     document.getElementById('loadingView').classList.add('hidden');
     
     if (result.profile) {
-      fillMemberForm(result.profile); // 來自 member.js
-      renderMemberCard(result.profile); // 來自 member.js
+      window.currentUserProfile = result.profile; // 🌟 儲存到全域變數，供活動系統判斷資格
+      fillMemberForm(result.profile); 
+      renderMemberCard(result.profile); 
     }
     
     isSuperAdminUser = result.isSuperAdmin; 
@@ -40,16 +44,15 @@ async function checkUserData(lineId) {
   }
 }
 
+// ... 保留 switchTab 與 toggleAdvanced 等函式 ...
 function switchTab(tabName) { 
   document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
   document.getElementById(`view-${tabName}`).classList.remove('hidden'); 
-  
   ['profile', 'checkin', 'events'].forEach(id => { 
     const btn = document.getElementById(`tab-${id}`); 
     if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); 
   });
-
-  if (tabName === 'events') loadEvents(); // 來自 event.js
+  if (tabName === 'events') loadEvents(); 
 }
 
 function toggleAdvanced() {
@@ -59,5 +62,4 @@ function toggleAdvanced() {
   else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
 }
 
-// 啟動系統
 window.onload = initializeApp;
