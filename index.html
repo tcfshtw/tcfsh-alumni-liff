@@ -7,228 +7,185 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    /* 隱藏滾動條但保留滾動功能 */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     body { padding-bottom: 70px; }
+    
+    /* 印表機/PDF 專用樣式 */
+    @media print {
+      body * { visibility: hidden; }
+      #view-seating, #view-seating * { visibility: visible; }
+      #view-seating { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white; z-index: 9999; }
+      .no-print { display: none !important; }
+      #printableSeating { padding: 0; }
+      .page-break-avoid { break-inside: avoid; page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans text-gray-800">
 
-  <!-- 頂部 Header -->
-  <header class="bg-blue-900 text-white p-3 shadow-md sticky top-0 z-50 flex items-center gap-3">
-    <img src="logo2.jpg" alt="校友總會 Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5">
+  <header class="bg-blue-900 text-white p-3 shadow-md sticky top-0 z-50 flex items-center gap-3 no-print">
+    <img src="logo2.jpg" alt="Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5">
     <h1 class="text-[17px] font-bold tracking-wider">中華民國臺中一中校友總會</h1>
   </header>
 
-  <!-- 全域 Loading 畫面 -->
   <div id="loadingView" class="fixed inset-0 bg-white/80 z-40 flex flex-col items-center justify-center backdrop-blur-sm">
     <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-900 border-t-transparent mb-4"></div>
-    <p id="statusMsg" class="text-blue-900 font-bold">系統連線中，請稍候...</p>
+    <p id="statusMsg" class="text-blue-900 font-bold">系統連線中...</p>
   </div>
 
-  <!-- 管理員密碼驗證彈窗 -->
   <div id="adminModal" class="fixed inset-0 bg-black/60 z-50 hidden flex flex-col items-center justify-center px-4">
     <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border-t-4 border-slate-800">
       <h3 class="text-xl font-bold text-slate-800 mb-2">🔐 管理員身分驗證</h3>
       <input type="password" id="adminPwd" class="w-full border p-3 rounded-lg outline-none mb-4" placeholder="請輸入密碼">
-      <div class="flex gap-3">
-        <button onclick="skipAdmin()" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-2 rounded-lg transition hover:bg-gray-300">跳過</button>
-        <button onclick="verifyAdminPwd()" class="w-1/2 bg-slate-800 text-white font-bold py-2 rounded-lg transition hover:bg-slate-900">確認解鎖</button>
-      </div>
+      <div class="flex gap-3"><button onclick="skipAdmin()" class="w-1/2 bg-gray-200 text-gray-700 font-bold py-2 rounded-lg">跳過</button><button onclick="verifyAdminPwd()" class="w-1/2 bg-slate-800 text-white font-bold py-2 rounded-lg">解鎖</button></div>
       <p id="pwdErrorMsg" class="text-red-500 text-sm mt-3 hidden text-center font-bold">❌ 密碼錯誤</p>
     </div>
   </div>
 
-  <!-- 活動詳細資訊彈窗 (Modal) -->
   <div id="eventModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-      <!-- 多圖片橫向滾動預覽區 -->
       <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100"></div>
-      
       <div class="p-5 overflow-y-auto">
-        <div class="flex justify-between items-start mb-2">
-          <span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span>
-          <button onclick="closeEventModal()" class="text-gray-400 font-bold text-xl leading-none hover:text-gray-700">&times;</button>
-        </div>
-        <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-3">活動標題</h2>
-        <div class="text-sm text-gray-600 space-y-1 mb-4 border-b pb-4">
-          <p>🕒 <span id="modalDate"></span></p>
-          <p>📍 <span id="modalLocation"></span></p>
-          <p>👥 限定屆數：<span id="modalCohorts" class="font-bold text-blue-700"></span></p>
-        </div>
-        <div id="modalContent" class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap mb-4"></div>
+        <div class="flex justify-between items-start mb-2"><span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span><button onclick="closeEventModal()" class="text-gray-400 text-xl leading-none">&times;</button></div>
+        <h2 id="modalTitle" class="text-2xl font-bold mb-3">活動標題</h2>
+        <div class="text-sm text-gray-600 space-y-1 mb-4 border-b pb-4"><p>🕒 <span id="modalDate"></span></p><p>📍 <span id="modalLocation"></span></p><p>👥 限定屆數：<span id="modalCohorts" class="font-bold text-blue-700"></span></p></div>
+        <div id="modalContent" class="text-gray-700 text-sm whitespace-pre-wrap mb-4"></div>
       </div>
-      
-      <div class="p-4 bg-gray-50 border-t border-gray-200">
-        <button id="registerEvtBtn" onclick="registerEvent()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-md transition">
-          🎟️ 我要報名參與
-        </button>
-      </div>
+      <div class="p-4 bg-gray-50 border-t border-gray-200"><button id="registerEvtBtn" onclick="registerEvent()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名</button></div>
     </div>
   </div>
 
-  <!-- 主要內容區塊 -->
-  <div class="max-w-md mx-auto p-4">
+  <div class="max-w-md mx-auto p-4 no-print">
 
-    <!-- ================= 視圖 1：校友及會員資料 ================= -->
+    <!-- 視圖 1：會員資料 -->
     <div id="view-profile" class="view-section hidden">
-      
-      <!-- 個人名片區 (資安遮蔽顯示) -->
       <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-4 bg-gradient-to-br from-white to-blue-50">
-        <div class="flex justify-between items-center mb-3">
-          <h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2>
-          <span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span>
-        </div>
+        <div class="flex justify-between items-center mb-3"><h2 class="text-lg font-bold text-blue-900">校友資訊卡</h2><span id="displayRole" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">一般會員(校友)</span></div>
         <div class="space-y-2 text-sm text-gray-700">
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">真實姓名</span><span id="cardName" class="font-bold">尚未設定</span></div>
-          <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold tracking-wider text-blue-700">尚未產生</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold text-blue-700">尚未產生</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">在學學號</span><span id="cardStudentId" class="font-mono">未提供</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">未提供</span></div>
         </div>
       </div>
       
-      <!-- 第一層表單：基本資料 -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-4">
         <h3 class="text-md font-bold text-gray-800 mb-4 border-b pb-2">✏️ 更新會員資料</h3>
         <form class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 <span class="text-red-500">*</span></label><input type="text" id="userName" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">性別 <span class="text-red-500">*</span></label><select id="userGender" class="w-full border p-2 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"><option value="男" selected>男</option><option value="女">女</option><option value="其他">其他</option></select></div>
-          </div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 <span class="text-red-500">*</span></label><select id="userCohort" class="w-full border p-2 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"></select></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 <span class="text-red-500">*</span></label><input type="tel" id="userPhone" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：0912345678"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號 <span class="text-xs text-gray-400 font-normal">(選填)</span></label><input type="text" id="userStudentId" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <button type="button" onclick="saveBasicProfile()" id="saveBasicBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存基本資料</button>
+          <div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-semibold text-gray-600 mb-1">真實姓名 *</label><input type="text" id="userName" class="w-full border p-2 rounded-lg outline-none"></div><div><label class="block text-sm font-semibold text-gray-600 mb-1">性別 *</label><select id="userGender" class="w-full border p-2 rounded-lg bg-white outline-none"><option value="男">男</option><option value="女">女</option><option value="其他">其他</option></select></div></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">畢業屆數 *</label><select id="userCohort" onchange="updateUniqueIdPreview()" class="w-full border p-2 rounded-lg bg-white outline-none"></select></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡電話 *</label><input type="tel" id="userPhone" oninput="updateUniqueIdPreview()" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">在學學號</label><input type="text" id="userStudentId" class="w-full border p-2 rounded-lg outline-none"></div>
+          <button type="button" onclick="saveBasicProfile()" id="saveBasicBtn" class="w-full bg-blue-700 text-white font-bold py-3 rounded-lg mt-2">儲存基本資料</button>
         </form>
       </div>
 
-      <!-- 第二層表單：進階資料 (折疊) -->
       <div class="border border-gray-200 rounded-lg overflow-hidden mb-4 shadow-sm bg-white">
-        <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-bold p-4 flex justify-between items-center focus:outline-none transition">
-          <span>➕ 展開填寫更多進階資料 (選填)</span>
-          <span id="advToggleIcon">▼</span>
-        </button>
+        <button type="button" onclick="toggleAdvanced()" class="w-full bg-gray-50 font-bold p-4 flex justify-between"><span>➕ 展開進階資料</span><span id="advToggleIcon">▼</span></button>
         <div id="advancedFields" class="hidden p-5 space-y-4 border-t border-gray-200">
-          <p class="text-xs text-gray-500 mb-2">提供詳細資料有助於理監事及校友會的緊密聯繫，本區資料將加密存放於第二層專屬資料庫。</p>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-          <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow mt-2 transition">儲存進階詳細資料</button>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">電子信箱</label><input type="email" id="userEmail" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">聯絡地址</label><input type="text" id="userAddress" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務產業</label><input type="text" id="userIndustry" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">服務單位</label><input type="text" id="userCompany" class="w-full border p-2 rounded-lg outline-none"></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">職稱</label><input type="text" id="userJobTitle" class="w-full border p-2 rounded-lg outline-none"></div>
+          <button type="button" onclick="saveDetailProfile()" id="saveDetailBtn" class="w-full bg-teal-600 text-white font-bold py-3 rounded-lg mt-2">儲存進階詳細資料</button>
         </div>
       </div>
       
-      <!-- 初始超級管理員註冊按鈕 (自動偵測隱藏/顯示) -->
-      <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 rounded-lg shadow mb-4 transition border-2 border-yellow-400">
-        👑 註冊為初始超級管理員
-      </button>
-
-      <!-- 進入系統後台按鈕 (自動偵測管理員權限隱藏/顯示) -->
-      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow transition mb-2">
-        ⚙️ 進入系統管理後台
-      </button>
+      <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 註冊初始超級管理員</button>
+      <button id="adminEntryBtn" onclick="switchTab('admin')" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg mb-2">⚙️ 進入系統管理後台</button>
     </div>
 
-    <!-- ================= 視圖 2：系統管理後台 ================= -->
+    <!-- 視圖 2：系統管理後台 -->
     <div id="view-admin" class="view-section hidden">
-      
-      <!-- 查詢與授權 -->
-      <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 shadow-sm mb-4">
-        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">🔍 會員查詢與權限管理</h2>
-        <div class="flex gap-2 mb-4">
-          <input type="text" id="searchKeyword" class="w-full border border-gray-300 p-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入姓名或代碼">
-          <button onclick="searchMemberBtn()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-lg font-bold transition">搜尋</button>
-        </div>
+      <!-- 查詢 -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 mb-4">
+        <h2 class="text-xl font-bold mb-4 border-b pb-2">🔍 會員查詢與權限</h2>
+        <div class="flex gap-2"><input type="text" id="searchKeyword" class="w-full border p-3 rounded-lg outline-none" placeholder="姓名或代碼"><button onclick="searchMemberBtn()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">搜尋</button></div>
         <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden"></div>
       </div>
 
+      <!-- 既有活動管理 -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 mb-4 shadow-sm">
+        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">📋 既有活動管理</h2>
+        <button onclick="loadAdminEvents()" class="w-full bg-blue-100 text-blue-800 font-bold py-2 rounded mb-3">載入/重整 列表</button>
+        <div id="adminEventsContainer" class="space-y-3"></div>
+      </div>
+
       <!-- 建立活動 -->
-      <div class="bg-white p-6 rounded-xl border border-red-200 border-t-4 border-t-red-700 shadow-sm mb-4">
+      <div class="bg-white p-6 rounded-xl border border-red-200 border-t-4 border-t-red-700 mb-4">
         <h2 class="text-xl font-bold text-red-800 mb-4 border-b pb-2">📅 建立專屬活動</h2>
         <form id="createEventForm" class="space-y-4">
-          <div><label class="block text-sm font-semibold text-gray-600 mb-1">活動主標題 <span class="text-red-500">*</span></label><input type="text" id="evTitle" class="w-full border p-2 rounded-lg outline-none" required></div>
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">主標題 *</label><input type="text" id="evTitle" class="w-full border p-2 rounded-lg outline-none" required></div>
           <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-semibold text-gray-600 mb-1">活動類型 *</label>
+              <select id="evType" class="w-full border p-2 rounded-lg bg-white outline-none">
+                <option value="一般活動">一般活動</option>
+                <option value="聚餐">聚餐</option>
+                <option value="演講">演講</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
             <div><label class="block text-sm font-semibold text-gray-600 mb-1">日期時間</label><input type="datetime-local" id="evDate" class="w-full border p-2 rounded-lg outline-none" required></div>
-            <div><label class="block text-sm font-semibold text-gray-600 mb-1">地點</label><input type="text" id="evLoc" class="w-full border p-2 rounded-lg outline-none"></div>
           </div>
-          
-          <!-- 參與身分選擇 -->
+          <div><label class="block text-sm font-semibold text-gray-600 mb-1">地點</label><input type="text" id="evLoc" class="w-full border p-2 rounded-lg outline-none"></div>
           <div>
-            <label class="block text-sm font-semibold text-gray-600 mb-1">限定參與身分 <span class="text-red-500">*</span></label>
-            <select id="evRole" onchange="toggleCohortInput()" class="w-full border p-2 rounded-lg bg-white outline-none">
-              <option value="全體" selected>全體</option>
-              <option value="限定屆數">限定屆數 (針對在校生或特定屆數)</option>
-              <option value="校友會成員">校友會成員 (排除一般會員)</option>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">限定身分 *</label>
+            <select id="evRole" onchange="toggleRoleInput()" class="w-full border p-2 rounded-lg bg-white outline-none">
+              <option value="全體">全體</option><option value="限定屆數">限定屆數</option><option value="校友會成員">校友會成員</option>
             </select>
           </div>
-          
-          <!-- 隱藏的屆數輸入框 -->
-          <div id="cohortInputDiv" class="hidden">
-            <label class="block text-sm font-semibold text-gray-600 mb-1">輸入限定屆數 <span class="text-xs font-normal text-gray-400">(例: 75 或 70-75)</span></label>
-            <input type="text" id="evCohort" placeholder="例如：70-75" class="w-full border p-2 rounded-lg outline-none">
-          </div>
-
+          <div id="cohortInputDiv" class="hidden"><label class="block text-sm font-semibold text-gray-600 mb-1">輸入屆數 (例: 70-75)</label><input type="text" id="evCohort" class="w-full border p-2 rounded-lg outline-none"></div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">內文說明</label><textarea id="evContent" rows="4" class="w-full border p-2 rounded-lg outline-none"></textarea></div>
-          
-          <!-- 多圖片上傳預覽區 -->
           <div class="bg-red-50 p-3 rounded-lg border border-red-100">
-            <div class="flex justify-between items-center mb-2">
-              <label class="block text-sm text-red-800 font-bold">宣傳圖片 (可選多張)</label>
-              <button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded shadow-sm hover:bg-red-100 transition">+ 添加照片</button>
-            </div>
+            <div class="flex justify-between items-center mb-2"><label class="block text-sm font-bold text-red-800">宣傳圖片 (可多張)</label><button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded">+ 添加照片</button></div>
             <input type="file" id="evImageInput" accept="image/*" multiple class="hidden" onchange="handleImagePreview(event)">
-            <!-- 圖片縮圖區 -->
             <div id="imagePreviewContainer" class="flex gap-2 overflow-x-auto snap-x py-1 hidden"></div>
           </div>
-          
-          <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded-lg mt-2 transition shadow-md">
-            建立活動與專屬報到表
-          </button>
+          <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg mt-2">建立</button>
         </form>
       </div>
     </div>
 
-    <!-- ================= 視圖 3：活動預告 ================= -->
+    <!-- 視圖 3：活動預告 -->
     <div id="view-events" class="view-section hidden">
-      <h2 class="text-xl font-bold text-blue-900 mb-4 px-1 flex justify-between items-center">
-        <span>近期活動預告</span>
-        <button onclick="loadEvents()" class="text-sm bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1 rounded transition">🔄 重整</button>
-      </h2>
+      <h2 class="text-xl font-bold text-blue-900 mb-4 px-1 flex justify-between items-center"><span>近期活動預告</span><button onclick="loadEvents()" class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded">🔄 重整</button></h2>
       <div id="eventsListContainer" class="space-y-4 pb-4"></div>
     </div>
 
-    <!-- ================= 視圖 4：活動報到 ================= -->
-    <div id="view-checkin" class="view-section hidden">
-      <div class="bg-white p-5 rounded-xl border border-blue-100 shadow-sm">
-        <h2 class="text-2xl font-bold mb-5 text-gray-800">活動報到</h2>
-        <button class="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200 transition transform active:scale-95">
-          <span class="text-3xl font-extrabold mb-1">✅ 報到</span>
-        </button>
-      </div>
-    </div>
+    <!-- 視圖 4：報到 -->
+    <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100 shadow-sm"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
   </div>
 
-  <!-- 底部導覽列 -->
-  <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around items-center h-[65px] z-50 pb-2">
-    <button onclick="switchTab('profile')" class="flex flex-col items-center justify-center w-1/3 text-blue-700 transition" id="tab-profile"><span class="text-xl mb-1">👤</span><span class="text-[10px] font-bold">會員資料</span></button>
-    <button onclick="switchTab('checkin')" class="flex flex-col items-center justify-center w-1/3 text-gray-400 transition" id="tab-checkin"><span class="text-xl mb-1">✅</span><span class="text-[10px] font-bold">活動報到</span></button>
-    <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400 transition" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
+  <!-- 🚀 新增：全螢幕互動桌次管理站 (隱藏狀態) -->
+  <div id="view-seating" class="view-section hidden w-full bg-white min-h-screen z-50 fixed top-0 left-0 overflow-y-auto pb-20">
+    <div class="sticky top-0 bg-white border-b shadow-sm p-3 flex justify-between items-center no-print">
+      <button onclick="closeSeatingManager()" class="text-gray-500 font-bold px-3 py-1">🔙 返回</button>
+      <h2 class="font-bold text-lg text-blue-900 truncate" id="seatingEventTitle">桌次安排</h2>
+      <button onclick="saveSeatingToServer()" id="saveSeatingBtn" class="bg-blue-600 text-white px-4 py-1 rounded shadow text-sm font-bold">💾 儲存</button>
+    </div>
+    <div class="p-4 bg-gray-50 flex gap-2 overflow-x-auto no-print">
+      <button onclick="addTable('main', 15)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 主桌(15人)</button>
+      <button onclick="addTable('main', 16)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 主桌(16人)</button>
+      <button onclick="addTable('normal', 10)" class="shrink-0 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 一般桌(10人)</button>
+      <button onclick="window.print()" class="shrink-0 bg-green-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm ml-auto">🖨️ 導出/列印</button>
+    </div>
+    <!-- 畫布區 -->
+    <div id="printableSeating" class="p-4 space-y-6"></div>
+  </div>
+
+  <!-- 人名搜尋資料庫 -->
+  <datalist id="memberDatalist"></datalist>
+
+  <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around items-center h-[65px] z-50 pb-2 no-print">
+    <button onclick="switchTab('profile')" class="flex flex-col items-center justify-center w-1/3 text-blue-700" id="tab-profile"><span class="text-xl mb-1">👤</span><span class="text-[10px] font-bold">會員資料</span></button>
+    <button onclick="switchTab('checkin')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-checkin"><span class="text-xl mb-1">✅</span><span class="text-[10px] font-bold">活動報到</span></button>
+    <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
   </nav>
 
-  <!-- 匯入外部模組化腳本 (請確保以下檔案已部署於同個 GitHub 目錄下) -->
-  <script src="config.js"></script>
-  <script src="member.js"></script>
-  <script src="admin.js"></script>
-  <script src="event.js"></script>
-  <script src="main.js"></script>
-  
-  <script>
-    // 綁定輸入框即時預覽事件 (放在 HTML 底部確保 DOM 已經載入)
-    document.getElementById('userCohort').addEventListener('change', updateUniqueIdPreview);
-    document.getElementById('userPhone').addEventListener('input', updateUniqueIdPreview);
-  </script>
+  <script src="config.js"></script><script src="member.js"></script><script src="admin.js"></script><script src="event.js"></script><script src="main.js"></script>
 </body>
 </html>
