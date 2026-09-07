@@ -20,10 +20,21 @@ async function claimSuperAdmin() {
 async function searchMemberBtn() {
   const keyword = document.getElementById('searchKeyword').value;
   if (!keyword) return;
+  await executeSearch('searchMember', { keyword: keyword });
+}
+
+async function searchByCohortBtn() {
+  const cohort = document.getElementById('searchCohort').value;
+  if (!cohort) return;
+  await executeSearch('searchByCohort', { cohort: cohort });
+}
+
+async function executeSearch(action, params) {
   const resDiv = document.getElementById('searchResults');
   resDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">搜尋中...</p>'; resDiv.classList.remove('hidden');
   try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'searchMember', callerId: currentUserLineId, keyword: keyword }) });
+    const payload = Object.assign({ action: action, callerId: currentUserLineId }, params);
+    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
     const result = await response.json();
     if (result.status === 'success') {
       if(result.results.length === 0) { resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">找不到會員</p>'; return; }
@@ -33,13 +44,38 @@ async function searchMemberBtn() {
         const grantBtnHtml = isSuperAdminUser ? `<button onclick="grantAdminAction('${m.lineUserId}', '${m.name}')" class="mt-2 w-full bg-purple-100 text-purple-800 border border-purple-300 font-bold py-2 rounded text-sm">👑 授予系統後台權限</button>` : '';
         resDiv.innerHTML += `
           <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <div class="flex justify-between items-center mb-2"><span class="font-bold text-blue-900">${m.name}</span><span class="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded">${m.uniqueId}</span></div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-blue-900">${m.name}</span>
+              <div>
+                <button onclick="viewMemberProfileAdmin('${m.lineUserId}')" class="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold mr-2">👁️ 檢視資料</button>
+                <span class="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded">${m.uniqueId}</span>
+              </div>
+            </div>
             <div class="flex gap-2"><select id="roleSelect_${m.uniqueId}" class="flex-1 border p-2 rounded text-sm outline-none">${roleOptions}</select><button onclick="updateRoleAction('${m.lineUserId}', '${m.uniqueId}')" class="bg-slate-700 text-white px-3 py-2 rounded text-sm font-bold">更新</button></div>
             ${grantBtnHtml}
           </div>`;
       });
     }
   } catch(err) { resDiv.innerHTML = '<p class="text-sm text-red-500 text-center">搜尋錯誤</p>'; }
+}
+
+async function viewMemberProfileAdmin(targetLineId) {
+  document.getElementById('loadingView').classList.remove('hidden');
+  try {
+    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getMemberDetailsAdmin', callerId: currentUserLineId, targetLineId: targetLineId }) });
+    const result = await response.json();
+    document.getElementById('loadingView').classList.add('hidden');
+    if (result.status === 'success') {
+      const p = result.profile;
+      document.getElementById('adminProfileContent').innerHTML = `
+        <p><b>姓名：</b>${p.name} (${p.gender})</p><p><b>代碼：</b>${p.uniqueId}</p>
+        <p><b>電話：</b>${p.phone}</p><p><b>學號：</b>${p.studentId || '無'}</p>
+        <hr class="my-2"><p><b>信箱：</b>${p.email || '未提供'}</p><p><b>地址：</b>${p.address || '未提供'}</p>
+        <p><b>產業：</b>${p.industry || '未提供'}</p><p><b>單位：</b>${p.company || '未提供'}</p><p><b>職稱：</b>${p.jobTitle || '未提供'}</p>
+      `;
+      document.getElementById('adminProfileModal').classList.remove('hidden');
+    } else { alert("❌ " + result.message); }
+  } catch(e) { document.getElementById('loadingView').classList.add('hidden'); alert("❌ 讀取錯誤"); }
 }
 
 async function updateRoleAction(targetLineId, uniqueId) {
@@ -74,17 +110,55 @@ async function loadAdminEvents() {
       container.innerHTML = '';
       if(result.events.length === 0) container.innerHTML = '<p class="text-sm text-gray-500">目前無活動</p>';
       result.events.forEach(evt => {
-        const btnHtml = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-3">🍽️ 進入桌次安排系統</button>` : '';
+        const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">🍽️ 進入桌次安排系統</button>` : '';
+        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">📊 檢視參與/投票結果</button>`;
+        
         container.innerHTML += `
           <div class="border border-gray-200 p-4 rounded-lg bg-gray-50 mb-3 shadow-sm">
             <div class="font-bold text-gray-800 text-lg">${evt.title}</div>
             <div class="text-xs text-gray-500 mt-1">📅 ${evt.date.replace('T', ' ')} | 📍 ${evt.location}</div>
             <div class="text-xs text-gray-500 mt-1">🏷️ ${evt.type} | 👥 ${evt.targetRoles}</div>
-            ${btnHtml}
+            ${seatingBtn}
+            ${resultBtn}
           </div>`;
       });
     }
   } catch(e) { container.innerHTML = '載入失敗'; }
+}
+
+async function viewEventResults(eventId, year, title, type) {
+  document.getElementById('resultModalTitle').innerText = title + " (" + type + "統計)";
+  const content = document.getElementById('resultModalContent');
+  content.innerHTML = '<p class="text-center text-gray-500 py-4">載入數據中...</p>';
+  document.getElementById('adminEventResultModal').classList.remove('hidden');
+
+  try {
+    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEventResults', eventId: eventId, year: year }) });
+    const result = await response.json();
+    if (result.status === 'success') {
+      if (result.total === 0) { content.innerHTML = '<p class="text-center text-gray-500 py-4">目前尚無任何紀錄</p>'; return; }
+      
+      content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/投票人數：${result.total} 人</p>`;
+      
+      // 將資料排序並轉成長條圖
+      let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
+      sortedData.forEach(item => {
+        const optName = item[0];
+        const count = item[1];
+        const pct = Math.round((count / result.total) * 100);
+        content.innerHTML += `
+          <div class="mb-3">
+            <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
+              <span>${optName}</span>
+              <span class="text-blue-700">${count}票 (${pct}%)</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>`;
+      });
+    } else { content.innerHTML = '<p class="text-center text-red-500 py-4">讀取失敗</p>'; }
+  } catch(e) { content.innerHTML = '<p class="text-center text-red-500 py-4">發生錯誤</p>'; }
 }
 
 let currentSeatingEventId = "";
@@ -139,7 +213,7 @@ async function saveSeatingToServer() {
   try {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveSeatingData', eventId: currentSeatingEventId, seatingData: JSON.stringify(seatingData) }) });
     const result = await response.json();
-    if (result.status === 'success') alert("✅ 桌次儲存成功！並已自動生成 Excel 分頁。"); else alert("❌ 儲存失敗");
+    if (result.status === 'success') alert("✅ 桌次儲存成功！"); else alert("❌ 儲存失敗");
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
 }
 
