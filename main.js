@@ -1,4 +1,5 @@
 // 檔案：main.js
+
 async function initializeApp() {
   generateCohortOptions(); 
   try {
@@ -23,24 +24,32 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
-    // 無論是不是管理員，登入後一律只顯示這三個區塊
+    // 無論是不是管理員，登入後一律先顯示這三個一般區塊
     switchTab('profile'); 
     
     const claimBtn = document.getElementById('claimAdminBtn');
     const adminBtn = document.getElementById('adminEntryBtn');
 
-    // 強制重置按鈕狀態，避免快取錯誤
+    // 處理首位管理員註冊按鈕
     if (claimBtn) {
       if (!result.hasAdmin) claimBtn.classList.remove('hidden');
       else claimBtn.classList.add('hidden');
     }
     
+    // 🌟 強制顯示管理員入口：只要是管理員，就把按鈕亮出來！
     if (adminBtn) {
-      if (result.status === 'success' && result.isAdmin) adminBtn.classList.remove('hidden');
-      else adminBtn.classList.add('hidden');
+      if (result.status === 'success' && result.isAdmin) {
+        adminBtn.classList.remove('hidden');
+      } else {
+        adminBtn.classList.add('hidden');
+      }
     }
 
-  } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
+  } catch (err) { 
+    document.getElementById('loadingView').classList.add('hidden'); 
+    switchTab('profile'); 
+    alert("資料讀取失敗，請確認網路連線或重整網頁。");
+  }
 }
 
 function switchTab(tabName) { 
@@ -60,4 +69,5 @@ function toggleAdvanced() {
   if (advBox.classList.contains('hidden')) { advBox.classList.remove('hidden'); icon.innerText = "▲"; } 
   else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
 }
+
 window.onload = initializeApp;
