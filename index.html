@@ -32,7 +32,6 @@
     <p id="statusMsg" class="text-blue-900 font-bold">系統連線中...</p>
   </div>
 
-  <!-- 密碼輸入框 -->
   <div id="adminModal" class="fixed inset-0 bg-black/60 z-50 hidden flex flex-col items-center justify-center px-4">
     <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border-t-4 border-slate-800">
       <h3 class="text-xl font-bold text-slate-800 mb-2">🔐 管理員身分驗證</h3>
@@ -121,9 +120,9 @@
         </div>
       </div>
       
-      <button id="claimSuperBtn" onclick="claimSuperAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 註冊初始超級管理員</button>
+      <!-- 移除原本的超管註冊按鈕，改為扁平化管理員註冊 -->
+      <button id="claimAdminBtn" onclick="claimAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 成為首位系統管理員</button>
       
-      <!-- 點擊喚醒密碼框的後台入口 -->
       <button id="adminEntryBtn" onclick="promptAdminModal()" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg mb-2">⚙️ 進入系統管理後台</button>
     </div>
 
