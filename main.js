@@ -2,7 +2,8 @@
 async function initializeApp() {
   generateCohortOptions(); 
   try {
-    await liff.init({ liffId: MY_LIFF_ID });
+    // ★ 設定強制外部瀏覽器喚醒登入，解決平板問題
+    await liff.init({ liffId: MY_LIFF_ID, withLoginOnExternalBrowser: true });
     if (liff.isLoggedIn()) {
       currentUserLineId = (await liff.getProfile()).userId;
       checkUserData(currentUserLineId);
@@ -38,7 +39,7 @@ function switchTab(tabName) {
     if(btn) btn.classList.replace(id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-gray-400' : 'text-blue-700', id === tabName || (id === 'profile' && tabName === 'admin') ? 'text-blue-700' : 'text-gray-400'); 
   });
   if (tabName === 'events') loadEvents(); 
-  if (tabName === 'admin') loadAdminEvents(); // 進入後台自動載入活動管理
+  if (tabName === 'admin') loadAdminEvents(); 
 }
 
 function toggleAdvanced() {
