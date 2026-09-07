@@ -20,13 +20,10 @@ function generateCohortOptions() {
   specialOption.value = "**"; specialOption.text = "顧問/非校友 (**)";
   select.appendChild(specialOption);
   
-  // 同步生成後台搜尋用的屆次選單
   const searchSelect = document.getElementById('searchCohort');
   if(searchSelect) {
     searchSelect.innerHTML = '<option value="">依屆次搜尋...</option>';
-    for (let i = 1; i <= 120; i++) {
-      searchSelect.innerHTML += `<option value="${i}">第 ${i} 屆</option>`;
-    }
+    for (let i = 1; i <= 120; i++) { searchSelect.innerHTML += `<option value="${i}">第 ${i} 屆</option>`; }
     searchSelect.innerHTML += `<option value="**">顧問/非校友</option>`;
   }
 }
