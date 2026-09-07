@@ -2,7 +2,6 @@
 async function initializeApp() {
   generateCohortOptions(); 
   try {
-    // 強制外部瀏覽器喚醒登入，解決平板問題
     await liff.init({ liffId: MY_LIFF_ID, withLoginOnExternalBrowser: true });
     if (liff.isLoggedIn()) {
       currentUserLineId = (await liff.getProfile()).userId;
@@ -24,25 +23,16 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
-    // ★ 改變邏輯：無論如何，先讓使用者進入個人資料首頁，確保畫面正常顯示
-    switchTab('profile');
+    // 無論是不是管理員，登入後一律只顯示這三個區塊
+    switchTab('profile'); 
     
-    isSuperAdminUser = result.isSuperAdmin; 
+    if (!result.hasAdmin) document.getElementById('claimAdminBtn').classList.remove('hidden');
     
-    // 若系統無超管，顯示註冊按鈕
-    if (!result.hasSuperAdmin) {
-      document.getElementById('claimSuperBtn').classList.remove('hidden');
-    }
-
-    // 若具備管理員權限，則「顯示」進入後台的按鈕 (但先不跳密碼框)
     if (result.status === 'success' && result.isAdmin) { 
+      // 具備管理員權限，才顯示「進入系統管理後台」按鈕，但依然保持在首頁
       document.getElementById('adminEntryBtn').classList.remove('hidden'); 
     }
-    
-  } catch (err) { 
-    document.getElementById('loadingView').classList.add('hidden'); 
-    switchTab('profile'); 
-  }
+  } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
 }
 
 function switchTab(tabName) { 
