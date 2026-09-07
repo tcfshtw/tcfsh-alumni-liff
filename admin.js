@@ -62,7 +62,7 @@ async function grantAdminAction(targetLineId, name) {
 }
 
 // ---------------------------------------------
-// 管理員後台活動與桌次管理
+// 後台管理：活動清單、桌次與投票 UI
 // ---------------------------------------------
 async function loadAdminEvents() {
   const container = document.getElementById('adminEventsContainer');
@@ -94,92 +94,73 @@ async function openSeatingManager(eventId, title) {
   currentSeatingEventId = eventId;
   document.getElementById('seatingEventTitle').innerText = title + " - 桌次安排";
   document.getElementById('view-seating').classList.remove('hidden'); 
-
-  // 載入搜尋名單
   if (document.getElementById('memberDatalist').options.length === 0) {
-    fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllMembersLite', callerId: currentUserLineId }) })
-    .then(res => res.json()).then(res => {
+    fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllMembersLite', callerId: currentUserLineId }) }).then(res => res.json()).then(res => {
       if (res.status === 'success') {
         const dl = document.getElementById('memberDatalist'); dl.innerHTML = '';
         res.members.forEach(m => dl.innerHTML += `<option value="${m}">`);
       }
     });
   }
-
-  document.getElementById('printableSeating').innerHTML = '<p class="text-center py-10 text-gray-500">讀取桌次中...</p>';
+  document.getElementById('printableSeating').innerHTML = '<p class="text-center py-10 text-gray-500">讀取中...</p>';
   try {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getSeatingData', eventId: eventId }) });
     const result = await response.json();
-    if (result.status === 'success') {
-      seatingData = JSON.parse(result.seatingData || '[]');
-      renderSeatingGrid();
-    }
+    if (result.status === 'success') { seatingData = JSON.parse(result.seatingData || '[]'); renderSeatingGrid(); }
   } catch(e) { document.getElementById('printableSeating').innerHTML = '讀取失敗'; }
 }
 
 function closeSeatingManager() { document.getElementById('view-seating').classList.add('hidden'); }
-
 function addTable(type, seats) {
   let num = seatingData.filter(t => t.type === 'normal').length + 1;
   let name = type === 'main' ? `主桌` : `第 ${num} 桌`;
-  if (type === 'main') {
-    const mainCount = seatingData.filter(t => t.type === 'main').length;
-    if (mainCount > 0) name = `主桌 (${mainCount + 1})`;
-  }
+  if (type === 'main') { const mainCount = seatingData.filter(t => t.type === 'main').length; if (mainCount > 0) name = `主桌 (${mainCount + 1})`; }
   seatingData.push({ id: 'T' + Date.now(), name: name, type: type, seats: seats, guests: new Array(seats).fill("") });
   renderSeatingGrid();
 }
-
-function removeTable(tableId) {
-  if(!confirm("確定要刪除此桌嗎？")) return;
-  seatingData = seatingData.filter(t => t.id !== tableId);
-  renderSeatingGrid();
-}
-
-function updateGuestName(tableId, seatIndex, value) {
-  const t = seatingData.find(t => t.id === tableId);
-  if(t) t.guests[seatIndex] = value;
-}
-function updateTableName(tableId, val) {
-  const t = seatingData.find(t => t.id === tableId);
-  if(t) t.name = val;
-}
+function removeTable(tableId) { if(!confirm("刪除此桌？")) return; seatingData = seatingData.filter(t => t.id !== tableId); renderSeatingGrid(); }
+function updateGuestName(tableId, seatIndex, value) { const t = seatingData.find(t => t.id === tableId); if(t) t.guests[seatIndex] = value; }
+function updateTableName(tableId, val) { const t = seatingData.find(t => t.id === tableId); if(t) t.name = val; }
 
 function renderSeatingGrid() {
-  const container = document.getElementById('printableSeating');
-  container.innerHTML = '';
+  const container = document.getElementById('printableSeating'); container.innerHTML = '';
   if (seatingData.length === 0) { container.innerHTML = '<p class="text-center text-gray-400 py-10 font-bold">尚無桌次，請由上方選單新增</p>'; return; }
-
   seatingData.forEach(table => {
     let seatHtml = '';
     for (let i = 0; i < table.seats; i++) {
-      seatHtml += `
-        <div class="flex items-center border-b border-gray-200 py-1.5">
-          <span class="w-8 text-center text-xs text-gray-500 font-bold">${i+1}</span>
-          <input type="text" list="memberDatalist" value="${table.guests[i]}" onchange="updateGuestName('${table.id}', ${i}, this.value)" placeholder="點擊搜尋或輸入" class="flex-1 bg-transparent outline-none p-1 text-sm font-bold text-blue-900 placeholder-gray-300">
-        </div>`;
+      seatHtml += `<div class="flex items-center border-b border-gray-200 py-1.5"><span class="w-8 text-center text-xs text-gray-500 font-bold">${i+1}</span><input type="text" list="memberDatalist" value="${table.guests[i]}" onchange="updateGuestName('${table.id}', ${i}, this.value)" placeholder="點擊搜尋或輸入" class="flex-1 bg-transparent outline-none p-1 text-sm font-bold text-blue-900 placeholder-gray-300"></div>`;
     }
-    container.innerHTML += `
-      <div class="table-card bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden mb-6 page-break-avoid">
-        <div class="bg-gray-200 border-b border-gray-300 px-3 py-2 flex justify-between items-center">
-          <input type="text" value="${table.name}" onchange="updateTableName('${table.id}', this.value)" class="font-bold text-gray-800 bg-transparent outline-none w-32 focus:border-b border-gray-400">
-          <span class="text-xs text-gray-500 font-bold">${table.seats} 人桌</span>
-          <button onclick="removeTable('${table.id}')" class="text-red-500 hover:text-red-700 no-print font-bold text-2xl leading-none">&times;</button>
-        </div>
-        <div class="p-3 grid grid-cols-2 gap-x-6 gap-y-1">
-          ${seatHtml}
-        </div>
-      </div>`;
+    container.innerHTML += `<div class="table-card bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden mb-6 page-break-avoid"><div class="bg-gray-200 border-b border-gray-300 px-3 py-2 flex justify-between items-center"><input type="text" value="${table.name}" onchange="updateTableName('${table.id}', this.value)" class="font-bold text-gray-800 bg-transparent outline-none w-32 focus:border-b border-gray-400"><span class="text-xs text-gray-500 font-bold">${table.seats} 人桌</span><button onclick="removeTable('${table.id}')" class="text-red-500 hover:text-red-700 no-print font-bold text-2xl leading-none">&times;</button></div><div class="p-3 grid grid-cols-2 gap-x-6 gap-y-1">${seatHtml}</div></div>`;
   });
 }
 
 async function saveSeatingToServer() {
-  const btn = document.getElementById('saveSeatingBtn');
-  btn.innerText = "儲存中"; btn.disabled = true;
+  const btn = document.getElementById('saveSeatingBtn'); btn.innerText = "儲存中"; btn.disabled = true;
   try {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveSeatingData', eventId: currentSeatingEventId, seatingData: JSON.stringify(seatingData) }) });
     const result = await response.json();
-    if (result.status === 'success') alert("✅ 桌次儲存成功！並已自動生成 Excel 報到表。");
-    else alert("❌ 儲存失敗");
-  } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存桌次"; btn.disabled = false; }
+    if (result.status === 'success') alert("✅ 桌次儲存成功！並已自動生成 Excel 分頁。"); else alert("❌ 儲存失敗");
+  } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
+}
+
+// --- 動態投票選項介面 ---
+let votingOptionsCount = 0;
+function toggleAdminVotingSection() {
+  const type = document.getElementById('evType').value;
+  const section = document.getElementById('adminVotingSection');
+  if (type === '投票') { section.classList.remove('hidden'); if(votingOptionsCount === 0) addVotingOptionUI(); } 
+  else { section.classList.add('hidden'); document.getElementById('votingOptionsContainer').innerHTML = ""; votingOptionsCount = 0; }
+}
+
+function addVotingOptionUI() {
+  votingOptionsCount++;
+  const id = `voteOpt_${Date.now()}`;
+  const html = `
+    <div id="${id}" class="bg-white p-3 rounded border border-purple-200 relative shadow-sm">
+      <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-2 right-2 text-red-500 font-bold">&times;</button>
+      <input type="text" placeholder="選項標題 (例: 方案A)" class="vote-opt-title w-full border-b border-gray-300 p-1 outline-none mb-2 font-bold text-purple-900" required>
+      <textarea placeholder="選項說明 (選填)" class="vote-opt-desc w-full border border-gray-200 p-2 rounded text-sm outline-none mb-2" rows="2"></textarea>
+      <input type="file" accept="image/*" class="vote-opt-img text-xs w-full">
+    </div>`;
+  document.getElementById('votingOptionsContainer').insertAdjacentHTML('beforeend', html);
 }
