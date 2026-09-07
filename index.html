@@ -10,8 +10,6 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     body { padding-bottom: 70px; }
-    
-    /* 印表機/PDF 專用樣式 */
     @media print {
       body * { visibility: hidden; }
       #view-seating, #view-seating * { visibility: visible; }
@@ -43,16 +41,28 @@
     </div>
   </div>
 
+  <!-- 活動與投票詳細資訊彈窗 -->
   <div id="eventModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-      <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100"></div>
-      <div class="p-5 overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative">
+      <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100 shrink-0"></div>
+      
+      <div class="p-5 overflow-y-auto flex-1">
         <div class="flex justify-between items-start mb-2"><span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span><button onclick="closeEventModal()" class="text-gray-400 text-xl leading-none">&times;</button></div>
         <h2 id="modalTitle" class="text-2xl font-bold mb-3">活動標題</h2>
         <div class="text-sm text-gray-600 space-y-1 mb-4 border-b pb-4"><p>🕒 <span id="modalDate"></span></p><p>📍 <span id="modalLocation"></span></p><p>👥 限定屆數：<span id="modalCohorts" class="font-bold text-blue-700"></span></p></div>
         <div id="modalContent" class="text-gray-700 text-sm whitespace-pre-wrap mb-4"></div>
+        
+        <!-- 動態生成的投票選項區塊 -->
+        <div id="modalVotingSection" class="hidden border-t border-gray-200 pt-4 mb-4">
+          <h3 class="text-lg font-bold text-purple-800 mb-3">🗳️ 請選擇您的投票方案</h3>
+          <div id="votingOptionsList" class="space-y-3"></div>
+        </div>
       </div>
-      <div class="p-4 bg-gray-50 border-t border-gray-200"><button id="registerEvtBtn" onclick="registerEvent()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名</button></div>
+
+      <div class="p-4 bg-gray-50 border-t border-gray-200 shrink-0" id="modalActionFooter">
+        <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出投票</button>
+        <p id="voteNotice" class="text-[10px] text-gray-500 text-center mt-2 hidden">💡 若您已投過票，再次送出將會覆蓋您的舊選擇。</p>
+      </div>
     </div>
   </div>
 
@@ -67,7 +77,6 @@
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold text-blue-700">尚未產生</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">在學學號</span><span id="cardStudentId" class="font-mono">未提供</span></div>
-          <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">未提供</span></div>
         </div>
       </div>
       
@@ -100,32 +109,30 @@
 
     <!-- 視圖 2：系統管理後台 -->
     <div id="view-admin" class="view-section hidden">
-      <!-- 查詢 -->
       <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 mb-4">
         <h2 class="text-xl font-bold mb-4 border-b pb-2">🔍 會員查詢與權限</h2>
         <div class="flex gap-2"><input type="text" id="searchKeyword" class="w-full border p-3 rounded-lg outline-none" placeholder="姓名或代碼"><button onclick="searchMemberBtn()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">搜尋</button></div>
         <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden"></div>
       </div>
 
-      <!-- 既有活動管理 -->
       <div class="bg-white p-6 rounded-xl border border-slate-200 mb-4 shadow-sm">
         <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">📋 既有活動管理</h2>
         <button onclick="loadAdminEvents()" class="w-full bg-blue-100 text-blue-800 font-bold py-2 rounded mb-3">載入/重整 列表</button>
         <div id="adminEventsContainer" class="space-y-3"></div>
       </div>
 
-      <!-- 建立活動 -->
       <div class="bg-white p-6 rounded-xl border border-red-200 border-t-4 border-t-red-700 mb-4">
-        <h2 class="text-xl font-bold text-red-800 mb-4 border-b pb-2">📅 建立專屬活動</h2>
+        <h2 class="text-xl font-bold text-red-800 mb-4 border-b pb-2">📅 建立專屬活動與投票</h2>
         <form id="createEventForm" class="space-y-4">
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">主標題 *</label><input type="text" id="evTitle" class="w-full border p-2 rounded-lg outline-none" required></div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-semibold text-gray-600 mb-1">活動類型 *</label>
-              <select id="evType" class="w-full border p-2 rounded-lg bg-white outline-none">
+              <select id="evType" onchange="toggleAdminVotingSection()" class="w-full border p-2 rounded-lg bg-white outline-none">
                 <option value="一般活動">一般活動</option>
                 <option value="聚餐">聚餐</option>
                 <option value="演講">演講</option>
+                <option value="投票">投票 (方案選拔)</option>
                 <option value="其他">其他</option>
               </select>
             </div>
@@ -140,11 +147,22 @@
           </div>
           <div id="cohortInputDiv" class="hidden"><label class="block text-sm font-semibold text-gray-600 mb-1">輸入屆數 (例: 70-75)</label><input type="text" id="evCohort" class="w-full border p-2 rounded-lg outline-none"></div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">內文說明</label><textarea id="evContent" rows="4" class="w-full border p-2 rounded-lg outline-none"></textarea></div>
+          
           <div class="bg-red-50 p-3 rounded-lg border border-red-100">
-            <div class="flex justify-between items-center mb-2"><label class="block text-sm font-bold text-red-800">宣傳圖片 (可多張)</label><button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded">+ 添加照片</button></div>
+            <div class="flex justify-between items-center mb-2"><label class="block text-sm font-bold text-red-800">主宣傳圖片 (可多張)</label><button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded">+ 添加照片</button></div>
             <input type="file" id="evImageInput" accept="image/*" multiple class="hidden" onchange="handleImagePreview(event)">
             <div id="imagePreviewContainer" class="flex gap-2 overflow-x-auto snap-x py-1 hidden"></div>
           </div>
+
+          <!-- 動態投票選項設定區 -->
+          <div id="adminVotingSection" class="hidden bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="font-bold text-purple-900">🗳️ 投票選項設定</h3>
+              <button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button>
+            </div>
+            <div id="votingOptionsContainer" class="space-y-4"></div>
+          </div>
+
           <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg mt-2">建立</button>
         </form>
       </div>
@@ -160,24 +178,19 @@
     <div id="view-checkin" class="view-section hidden"><div class="bg-white p-5 rounded-xl border border-blue-100 shadow-sm"><h2 class="text-2xl font-bold mb-5">活動報到</h2><button class="w-full bg-red-600 text-white py-6 rounded-2xl shadow-lg border-4 border-red-200"><span class="text-3xl font-extrabold mb-1">✅ 報到</span></button></div></div>
   </div>
 
-  <!-- 🚀 新增：全螢幕互動桌次管理站 (隱藏狀態) -->
   <div id="view-seating" class="view-section hidden w-full bg-white min-h-screen z-50 fixed top-0 left-0 overflow-y-auto pb-20">
     <div class="sticky top-0 bg-white border-b shadow-sm p-3 flex justify-between items-center no-print">
-      <button onclick="closeSeatingManager()" class="text-gray-500 font-bold px-3 py-1">🔙 返回</button>
-      <h2 class="font-bold text-lg text-blue-900 truncate" id="seatingEventTitle">桌次安排</h2>
-      <button onclick="saveSeatingToServer()" id="saveSeatingBtn" class="bg-blue-600 text-white px-4 py-1 rounded shadow text-sm font-bold">💾 儲存</button>
+      <button onclick="closeSeatingManager()" class="text-gray-500 font-bold px-3 py-1">🔙 返回</button><h2 class="font-bold text-lg text-blue-900 truncate" id="seatingEventTitle">桌次安排</h2><button onclick="saveSeatingToServer()" id="saveSeatingBtn" class="bg-blue-600 text-white px-4 py-1 rounded shadow text-sm font-bold">💾 儲存</button>
     </div>
     <div class="p-4 bg-gray-50 flex gap-2 overflow-x-auto no-print">
-      <button onclick="addTable('main', 15)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 主桌(15人)</button>
-      <button onclick="addTable('main', 16)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 主桌(16人)</button>
-      <button onclick="addTable('normal', 10)" class="shrink-0 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-bold shadow-sm">+ 一般桌(10人)</button>
-      <button onclick="window.print()" class="shrink-0 bg-green-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm ml-auto">🖨️ 導出/列印</button>
+      <button onclick="addTable('main', 15)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold">+ 主桌(15人)</button>
+      <button onclick="addTable('main', 16)" class="shrink-0 bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded text-sm font-bold">+ 主桌(16人)</button>
+      <button onclick="addTable('normal', 10)" class="shrink-0 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-bold">+ 一般桌(10人)</button>
+      <button onclick="window.print()" class="shrink-0 bg-green-600 text-white px-3 py-2 rounded text-sm font-bold ml-auto">🖨️ 列印</button>
     </div>
-    <!-- 畫布區 -->
     <div id="printableSeating" class="p-4 space-y-6"></div>
   </div>
 
-  <!-- 人名搜尋資料庫 -->
   <datalist id="memberDatalist"></datalist>
 
   <nav class="fixed bottom-0 w-full bg-white border-t flex justify-around items-center h-[65px] z-50 pb-2 no-print">
