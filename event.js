@@ -132,7 +132,6 @@ function openEventDetail(eventId, isEligible) {
     urlArray.forEach(url => { imgBox.innerHTML += `<div class="w-full h-48 flex-shrink-0 snap-center bg-cover bg-center" style="background-image: url('${url}')"></div>`; });
   } else { imgBox.classList.add('hidden'); }
   
-  // 處理投票 UI 渲染
   const voteSection = document.getElementById('modalVotingSection');
   const voteList = document.getElementById('votingOptionsList');
   const notice = document.getElementById('voteNotice');
@@ -145,16 +144,11 @@ function openEventDetail(eventId, isEligible) {
       voteList.innerHTML += `
         <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition">
           <input type="radio" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 focus:ring-purple-500">
-          <div class="ml-3 flex-1">
-            <div class="font-bold text-purple-900">${opt.title}</div>
-            <div class="text-xs text-gray-500">${opt.desc || ''}</div>
-          </div>
+          <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500">${opt.desc || ''}</div></div>
           ${imgHtml}
         </label>`;
     });
-  } else {
-    voteSection.classList.add('hidden'); notice.classList.add('hidden');
-  }
+  } else { voteSection.classList.add('hidden'); notice.classList.add('hidden'); }
 
   const btn = document.getElementById('registerEvtBtn');
   if (isEligible) {
@@ -172,27 +166,18 @@ function closeEventModal() { document.getElementById('eventModal').classList.add
 
 async function submitUserAction() {
   if(!activeEventContext) return;
-  let actionType = '報名';
-  let actionValue = '已報名';
-
+  let actionType = '報名'; let actionValue = '已報名';
   if (activeEventContext.type === '投票') {
     actionType = '投票';
     const selected = document.querySelector('input[name="voteOption"]:checked');
     if (!selected) { alert("請先選擇一個方案！"); return; }
     actionValue = selected.value;
   }
-
-  const btn = document.getElementById('registerEvtBtn');
-  btn.disabled = true; btn.innerText = "資料送出中...";
-
+  const btn = document.getElementById('registerEvtBtn'); btn.disabled = true; btn.innerText = "資料送出中...";
   try {
-    const payload = {
-      action: 'submitEventAction', eventId: activeEventContext.id, eventTitle: activeEventContext.title,
-      eventDate: activeEventContext.date, lineUserId: currentUserLineId, actionType: actionType, actionValue: actionValue
-    };
+    const payload = { action: 'submitEventAction', eventId: activeEventContext.id, eventTitle: activeEventContext.title, eventDate: activeEventContext.date, lineUserId: currentUserLineId, actionType: actionType, actionValue: actionValue };
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
     const result = await response.json();
-    if(result.status === 'success') { alert("✅ " + result.message); closeEventModal(); }
-    else alert("❌ " + result.message);
+    if(result.status === 'success') { alert("✅ " + result.message); closeEventModal(); } else alert("❌ " + result.message);
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "完成"; }
 }
