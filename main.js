@@ -26,12 +26,20 @@ async function checkUserData(lineId) {
     // 無論是不是管理員，登入後一律只顯示這三個區塊
     switchTab('profile'); 
     
-    if (!result.hasAdmin) document.getElementById('claimAdminBtn').classList.remove('hidden');
-    
-    if (result.status === 'success' && result.isAdmin) { 
-      // 具備管理員權限，才顯示「進入系統管理後台」按鈕，但依然保持在首頁
-      document.getElementById('adminEntryBtn').classList.remove('hidden'); 
+    const claimBtn = document.getElementById('claimAdminBtn');
+    const adminBtn = document.getElementById('adminEntryBtn');
+
+    // 強制重置按鈕狀態，避免快取錯誤
+    if (claimBtn) {
+      if (!result.hasAdmin) claimBtn.classList.remove('hidden');
+      else claimBtn.classList.add('hidden');
     }
+    
+    if (adminBtn) {
+      if (result.status === 'success' && result.isAdmin) adminBtn.classList.remove('hidden');
+      else adminBtn.classList.add('hidden');
+    }
+
   } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
 }
 
