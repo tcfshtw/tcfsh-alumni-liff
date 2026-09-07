@@ -41,24 +41,43 @@
     </div>
   </div>
 
-  <!-- 活動與投票詳細資訊彈窗 -->
+  <!-- 新增：管理員檢視會員資料彈窗 -->
+  <div id="adminProfileModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-5 border-t-4 border-blue-600">
+      <div class="flex justify-between items-start mb-4">
+        <h3 class="font-bold text-xl text-slate-800">會員詳細履歷</h3>
+        <button onclick="document.getElementById('adminProfileModal').classList.add('hidden')" class="text-gray-400 text-xl font-bold">&times;</button>
+      </div>
+      <div id="adminProfileContent" class="space-y-2 text-sm text-gray-700"></div>
+    </div>
+  </div>
+
+  <!-- 新增：檢視活動結果/投票統計彈窗 -->
+  <div id="adminEventResultModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border-t-4 border-teal-600">
+      <div class="p-5 flex-1 overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+          <h3 class="font-bold text-xl text-teal-800" id="resultModalTitle">活動數據結果</h3>
+          <button onclick="document.getElementById('adminEventResultModal').classList.add('hidden')" class="text-gray-400 text-xl font-bold">&times;</button>
+        </div>
+        <div id="resultModalContent" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="eventModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative">
       <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100 shrink-0"></div>
-      
       <div class="p-5 overflow-y-auto flex-1">
         <div class="flex justify-between items-start mb-2"><span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span><button onclick="closeEventModal()" class="text-gray-400 text-xl leading-none">&times;</button></div>
         <h2 id="modalTitle" class="text-2xl font-bold mb-3">活動標題</h2>
         <div class="text-sm text-gray-600 space-y-1 mb-4 border-b pb-4"><p>🕒 <span id="modalDate"></span></p><p>📍 <span id="modalLocation"></span></p><p>👥 限定屆數：<span id="modalCohorts" class="font-bold text-blue-700"></span></p></div>
         <div id="modalContent" class="text-gray-700 text-sm whitespace-pre-wrap mb-4"></div>
-        
-        <!-- 動態生成的投票選項區塊 -->
         <div id="modalVotingSection" class="hidden border-t border-gray-200 pt-4 mb-4">
           <h3 class="text-lg font-bold text-purple-800 mb-3">🗳️ 請選擇您的投票方案</h3>
           <div id="votingOptionsList" class="space-y-3"></div>
         </div>
       </div>
-
       <div class="p-4 bg-gray-50 border-t border-gray-200 shrink-0" id="modalActionFooter">
         <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出投票</button>
         <p id="voteNotice" class="text-[10px] text-gray-500 text-center mt-2 hidden">💡 若您已投過票，再次送出將會覆蓋您的舊選擇。</p>
@@ -111,7 +130,15 @@
     <div id="view-admin" class="view-section hidden">
       <div class="bg-white p-6 rounded-xl border border-slate-200 border-t-4 border-t-slate-800 mb-4">
         <h2 class="text-xl font-bold mb-4 border-b pb-2">🔍 會員查詢與權限</h2>
-        <div class="flex gap-2"><input type="text" id="searchKeyword" class="w-full border p-3 rounded-lg outline-none" placeholder="姓名或代碼"><button onclick="searchMemberBtn()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">搜尋</button></div>
+        <div class="flex gap-2 mb-2">
+          <input type="text" id="searchKeyword" class="w-full border p-3 rounded-lg outline-none flex-1" placeholder="姓名或代碼">
+          <button onclick="searchMemberBtn()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">搜尋</button>
+        </div>
+        <!-- 依屆次撈資料下拉選單 -->
+        <div class="flex gap-2 mb-4">
+          <select id="searchCohort" class="w-full border p-3 rounded-lg bg-white outline-none flex-1"></select>
+          <button onclick="searchByCohortBtn()" class="bg-blue-800 text-white px-5 rounded-lg font-bold text-xs">依屆次撈取</button>
+        </div>
         <div id="searchResults" class="space-y-3 mt-4 border-t pt-4 hidden"></div>
       </div>
 
@@ -129,11 +156,7 @@
             <div>
               <label class="block text-sm font-semibold text-gray-600 mb-1">活動類型 *</label>
               <select id="evType" onchange="toggleAdminVotingSection()" class="w-full border p-2 rounded-lg bg-white outline-none">
-                <option value="一般活動">一般活動</option>
-                <option value="聚餐">聚餐</option>
-                <option value="演講">演講</option>
-                <option value="投票">投票 (方案選拔)</option>
-                <option value="其他">其他</option>
+                <option value="一般活動">一般活動</option><option value="聚餐">聚餐</option><option value="演講">演講</option><option value="投票">投票 (方案選拔)</option><option value="其他">其他</option>
               </select>
             </div>
             <div><label class="block text-sm font-semibold text-gray-600 mb-1">日期時間</label><input type="datetime-local" id="evDate" class="w-full border p-2 rounded-lg outline-none" required></div>
@@ -154,12 +177,8 @@
             <div id="imagePreviewContainer" class="flex gap-2 overflow-x-auto snap-x py-1 hidden"></div>
           </div>
 
-          <!-- 動態投票選項設定區 -->
           <div id="adminVotingSection" class="hidden bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="font-bold text-purple-900">🗳️ 投票選項設定</h3>
-              <button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button>
-            </div>
+            <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-purple-900">🗳️ 投票選項設定</h3><button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button></div>
             <div id="votingOptionsContainer" class="space-y-4"></div>
           </div>
 
