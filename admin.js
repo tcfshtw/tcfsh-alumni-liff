@@ -15,7 +15,7 @@ function verifyAdminPwd() {
 function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); }
 
 async function claimAdmin() {
-  if(!confirm("確定綁定為首位系統管理員嗎？")) return;
+  if(!confirm("確定綁定為首位系統管理員嗎？\n(請確認上方基本資料已經儲存完畢)")) return;
   document.getElementById('loadingView').classList.remove('hidden');
   try {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'claimAdmin', lineUserId: currentUserLineId }) });
@@ -48,7 +48,6 @@ async function executeSearch(action, params) {
       resDiv.innerHTML = '';
       result.results.forEach(m => {
         const roleOptions = ['一般會員(校友)', '理事長', '副理事長', '常務監事', '常務理事', '監事', '理事', '顧問', '幹部(管理員)'].map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('');
-        // 所有管理員都能授權
         const grantBtnHtml = `<button onclick="grantAdminAction('${m.lineUserId}', '${m.name}')" class="mt-2 w-full bg-purple-100 text-purple-800 border border-purple-300 font-bold py-2 rounded text-sm">👑 授予系統管理員權限</button>`;
         resDiv.innerHTML += `
           <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
