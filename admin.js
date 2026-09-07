@@ -1,11 +1,24 @@
 // 檔案：admin.js
+
+// 點擊「進入系統管理後台」按鈕時，喚醒密碼框
+function promptAdminModal() {
+  document.getElementById('adminPwd').value = '';
+  document.getElementById('pwdErrorMsg').classList.add('hidden');
+  document.getElementById('adminModal').classList.remove('hidden');
+}
+
 function verifyAdminPwd() { 
   if (document.getElementById('adminPwd').value === "tcfsh01") { 
     document.getElementById('adminModal').classList.add('hidden'); 
-    switchTab('admin'); document.getElementById('adminEntryBtn').classList.remove('hidden'); 
-  } else { document.getElementById('pwdErrorMsg').classList.remove('hidden'); } 
+    switchTab('admin'); 
+  } else { 
+    document.getElementById('pwdErrorMsg').classList.remove('hidden'); 
+  } 
 }
-function skipAdmin() { document.getElementById('adminModal').classList.add('hidden'); switchTab('profile'); }
+
+function skipAdmin() { 
+  document.getElementById('adminModal').classList.add('hidden'); 
+}
 
 async function claimSuperAdmin() {
   if(!confirm("確定綁定為初始超級管理員嗎？")) return;
@@ -97,9 +110,6 @@ async function grantAdminAction(targetLineId, name) {
   } catch(err) { alert("❌ 發生錯誤"); }
 }
 
-// ---------------------------------------------
-// 後台管理：活動清單、桌次與投票 UI
-// ---------------------------------------------
 async function loadAdminEvents() {
   const container = document.getElementById('adminEventsContainer');
   container.innerHTML = '<p class="text-sm text-gray-500">載入中...</p>';
@@ -137,10 +147,7 @@ async function viewEventResults(eventId, year, title, type) {
     const result = await response.json();
     if (result.status === 'success') {
       if (result.total === 0) { content.innerHTML = '<p class="text-center text-gray-500 py-4">目前尚無任何紀錄</p>'; return; }
-      
       content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/投票人數：${result.total} 人</p>`;
-      
-      // 將資料排序並轉成長條圖
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
       sortedData.forEach(item => {
         const optName = item[0];
@@ -149,8 +156,7 @@ async function viewEventResults(eventId, year, title, type) {
         content.innerHTML += `
           <div class="mb-3">
             <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
-              <span>${optName}</span>
-              <span class="text-blue-700">${count}票 (${pct}%)</span>
+              <span>${optName}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
               <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
@@ -217,7 +223,6 @@ async function saveSeatingToServer() {
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
 }
 
-// --- 動態投票選項介面 ---
 let votingOptionsCount = 0;
 function toggleAdminVotingSection() {
   const type = document.getElementById('evType').value;
