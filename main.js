@@ -2,7 +2,7 @@
 async function initializeApp() {
   generateCohortOptions(); 
   try {
-    // ★ 設定強制外部瀏覽器喚醒登入，解決平板問題
+    // 強制外部瀏覽器喚醒登入，解決平板問題
     await liff.init({ liffId: MY_LIFF_ID, withLoginOnExternalBrowser: true });
     if (liff.isLoggedIn()) {
       currentUserLineId = (await liff.getProfile()).userId;
@@ -24,11 +24,25 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
+    // ★ 改變邏輯：無論如何，先讓使用者進入個人資料首頁，確保畫面正常顯示
+    switchTab('profile');
+    
     isSuperAdminUser = result.isSuperAdmin; 
-    if (!result.hasSuperAdmin) document.getElementById('claimSuperBtn').classList.remove('hidden');
-    if (result.status === 'success' && result.isAdmin) { document.getElementById('adminModal').classList.remove('hidden'); } 
-    else { switchTab('profile'); }
-  } catch (err) { document.getElementById('loadingView').classList.add('hidden'); switchTab('profile'); }
+    
+    // 若系統無超管，顯示註冊按鈕
+    if (!result.hasSuperAdmin) {
+      document.getElementById('claimSuperBtn').classList.remove('hidden');
+    }
+
+    // 若具備管理員權限，則「顯示」進入後台的按鈕 (但先不跳密碼框)
+    if (result.status === 'success' && result.isAdmin) { 
+      document.getElementById('adminEntryBtn').classList.remove('hidden'); 
+    }
+    
+  } catch (err) { 
+    document.getElementById('loadingView').classList.add('hidden'); 
+    switchTab('profile'); 
+  }
 }
 
 function switchTab(tabName) { 
