@@ -23,8 +23,8 @@
 <body class="bg-slate-100 min-h-screen font-sans text-gray-800">
 
   <header class="bg-blue-900 text-white p-3 shadow-md sticky top-0 z-50 flex items-center gap-3 no-print">
-    <!-- 🌟 彩蛋開關：在圖片上加入 onclick="handleSecretDoor()" -->
-    <img src="logo2.jpg" alt="Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5" onclick="handleSecretDoor()">
+    <!-- 🌟 彩蛋開關綁定在 Logo 上 -->
+    <img src="logo2.jpg" alt="Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5 cursor-pointer" onclick="handleSecretDoor()">
     <h1 class="text-[17px] font-bold tracking-wider">中華民國臺中一中校友總會</h1>
   </header>
 
@@ -122,7 +122,8 @@
       </div>
       
       <button id="claimAdminBtn" onclick="claimAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 成為首位系統管理員</button>
-      <button id="adminEntryBtn" onclick="promptAdminModal()" class="hidden w-full bg-slate-800 text-white font-bold py-3 rounded-lg mb-2">⚙️ 進入系統管理後台</button>
+      
+      <!-- 💡 移除原本的 adminEntryBtn，系統現在只有 5-tap 彩蛋單一入口 -->
     </div>
 
     <!-- 視圖 2：系統管理後台 -->
