@@ -1,5 +1,21 @@
 // 檔案：main.js
 
+// 🌟 彩蛋：連點 5 次計數器
+let secretTapCount = 0;
+let secretTapTimer = null;
+
+function handleSecretDoor() {
+  secretTapCount++;
+  clearTimeout(secretTapTimer);
+  secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 2000); // 2秒內沒點完就歸零
+  
+  if (secretTapCount >= 5) {
+    secretTapCount = 0;
+    // 強制打開密碼框
+    promptAdminModal();
+  }
+}
+
 async function initializeApp() {
   generateCohortOptions(); 
   try {
@@ -24,31 +40,26 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
-    // 無論是不是管理員，登入後一律先顯示這三個一般區塊
     switchTab('profile'); 
     
     const claimBtn = document.getElementById('claimAdminBtn');
     const adminBtn = document.getElementById('adminEntryBtn');
 
-    // 處理首位管理員註冊按鈕
     if (claimBtn) {
       if (!result.hasAdmin) claimBtn.classList.remove('hidden');
       else claimBtn.classList.add('hidden');
     }
     
-    // 🌟 強制顯示管理員入口：只要是管理員，就把按鈕亮出來！
     if (adminBtn) {
-      if (result.status === 'success' && result.isAdmin) {
-        adminBtn.classList.remove('hidden');
-      } else {
-        adminBtn.classList.add('hidden');
-      }
+      if (result.status === 'success' && result.isAdmin) adminBtn.classList.remove('hidden');
+      else adminBtn.classList.add('hidden');
     }
 
   } catch (err) { 
     document.getElementById('loadingView').classList.add('hidden'); 
     switchTab('profile'); 
-    alert("資料讀取失敗，請確認網路連線或重整網頁。");
+    // 🌟 在錯誤視窗中提示彩蛋存在
+    alert(`資料連線異常 (${err.message})。\n\n💡 提示：若您是系統管理員，可連續點擊左上角 Logo 5次，強制開啟管理員通道。`);
   }
 }
 
@@ -69,5 +80,4 @@ function toggleAdvanced() {
   if (advBox.classList.contains('hidden')) { advBox.classList.remove('hidden'); icon.innerText = "▲"; } 
   else { advBox.classList.add('hidden'); icon.innerText = "▼"; }
 }
-
 window.onload = initializeApp;
