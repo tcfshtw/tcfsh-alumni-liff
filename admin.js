@@ -9,6 +9,10 @@ function promptAdminModal() {
 function verifyAdminPwd() { 
   if (document.getElementById('adminPwd').value === "tcfsh01") { 
     document.getElementById('adminModal').classList.add('hidden'); 
+    
+    // 🌟 強制賦予權限，無視資料庫的錯誤
+    isSuperAdminUser = true;
+    document.getElementById('adminEntryBtn').classList.remove('hidden');
     switchTab('admin'); 
   } else { document.getElementById('pwdErrorMsg').classList.remove('hidden'); } 
 }
@@ -48,6 +52,7 @@ async function executeSearch(action, params) {
       resDiv.innerHTML = '';
       result.results.forEach(m => {
         const roleOptions = ['一般會員(校友)', '理事長', '副理事長', '常務監事', '常務理事', '監事', '理事', '顧問', '幹部(管理員)'].map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('');
+        // 彩蛋登入者也能強制授權
         const grantBtnHtml = `<button onclick="grantAdminAction('${m.lineUserId}', '${m.name}')" class="mt-2 w-full bg-purple-100 text-purple-800 border border-purple-300 font-bold py-2 rounded text-sm">👑 授予系統管理員權限</button>`;
         resDiv.innerHTML += `
           <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
