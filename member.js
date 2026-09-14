@@ -50,10 +50,8 @@ function updateUniqueIdPreview() {
   }
 }
 
-// 🌟 安全賦值函式：找不到元素也不會當機
 function fillMemberForm(profile) {
   const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
-  
   safeSet('userName', profile.name); 
   safeSet('userGender', profile.gender || "男");
   safeSet('userCohort', profile.cohort); 
@@ -66,10 +64,8 @@ function fillMemberForm(profile) {
   safeSet('userJobTitle', profile.jobTitle || "");
 }
 
-// 🌟 安全文字函式：找不到元素也不會當機
 function renderMemberCard(profile) {
   const safeText = (id, text) => { const el = document.getElementById(id); if(el) el.innerText = text; };
-
   safeText('cardName', `${profile.name} (${profile.gender || "男"})`); 
   safeText('cardUniqueId', profile.uniqueId || "尚未產生");
   safeText('displayRole', profile.role); 
