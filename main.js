@@ -1,18 +1,14 @@
 // 檔案：main.js
 
-// 🌟 彩蛋：連點 5 次計數器
 let secretTapCount = 0;
 let secretTapTimer = null;
 
 function handleSecretDoor() {
   secretTapCount++;
   clearTimeout(secretTapTimer);
-  // 2秒內沒點完就歸零
   secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 2000); 
-  
   if (secretTapCount >= 5) {
     secretTapCount = 0;
-    // 強制打開密碼框 (手機、平板、電腦皆通用)
     promptAdminModal();
   }
 }
@@ -41,21 +37,34 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
-    // 無論任何權限，登入後一律先顯示一般首頁
     switchTab('profile'); 
     
     const claimBtn = document.getElementById('claimAdminBtn');
+    const adminBtn = document.getElementById('adminEntryBtn');
+
     if (claimBtn) {
       if (!result.hasAdmin) claimBtn.classList.remove('hidden');
       else claimBtn.classList.add('hidden');
     }
     
-    // 💡 已經徹底移除「按鈕」的顯示邏輯，現在後台唯一入口只有連點 Logo 彩蛋。
+    // 🌟 雙引擎驗證：後端判定為管理員，或前端判定為創始人，皆顯示入口
+    if (adminBtn) {
+      if ((result.status === 'success' && result.isAdmin) || lineId === OWNER_LINE_ID) {
+        adminBtn.classList.remove('hidden');
+      } else {
+        adminBtn.classList.add('hidden');
+      }
+    }
 
   } catch (err) { 
     document.getElementById('loadingView').classList.add('hidden'); 
     switchTab('profile'); 
-    alert(`資料連線異常 (${err.message})。\n\n💡 提示：若您是系統管理員，可連續點擊左上角 Logo 5次，強制開啟管理員通道。`);
+    
+    // 🌟 離線/錯誤防護：就算伺服器掛了，創始人依然能看到入口按鈕
+    if (lineId === OWNER_LINE_ID) {
+      document.getElementById('adminEntryBtn').classList.remove('hidden');
+    }
+    alert(`資料連線異常 (${err.message})。\n\n💡 提示：若您是系統管理員，可點擊首頁按鈕或連續點擊左上角 Logo 5次，強制開啟管理員通道。`);
   }
 }
 
