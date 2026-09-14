@@ -1,5 +1,6 @@
 // 檔案：main.js
 
+// 🌟 彩蛋：連點 5 次計數器
 let secretTapCount = 0;
 let secretTapTimer = null;
 
@@ -7,8 +8,10 @@ function handleSecretDoor() {
   secretTapCount++;
   clearTimeout(secretTapTimer);
   secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 2000); 
+  
   if (secretTapCount >= 5) {
     secretTapCount = 0;
+    // 強制打開密碼框 (手機、平板、電腦皆通用)
     promptAdminModal();
   }
 }
@@ -37,6 +40,7 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
+    // 無論任何權限，登入後一律先顯示一般首頁
     switchTab('profile'); 
     
     const claimBtn = document.getElementById('claimAdminBtn');
@@ -47,12 +51,16 @@ async function checkUserData(lineId) {
       else claimBtn.classList.add('hidden');
     }
     
-    // 🌟 雙引擎驗證：後端判定為管理員，或前端判定為創始人，皆顯示入口
+    // 🌟 智慧驗證：後端判定為管理員，或前端判定為創始人，皆顯示入口
     if (adminBtn) {
       if ((result.status === 'success' && result.isAdmin) || lineId === OWNER_LINE_ID) {
         adminBtn.classList.remove('hidden');
+        // 💡 核心升級：核發設備通行證，記憶在手機/瀏覽器中
+        localStorage.setItem('tcfsh_is_admin', 'true');
       } else {
         adminBtn.classList.add('hidden');
+        // 💡 權限撤銷：若不再是管理員，清除設備通行證
+        localStorage.removeItem('tcfsh_is_admin');
       }
     }
 
@@ -60,11 +68,14 @@ async function checkUserData(lineId) {
     document.getElementById('loadingView').classList.add('hidden'); 
     switchTab('profile'); 
     
-    // 🌟 離線/錯誤防護：就算伺服器掛了，創始人依然能看到入口按鈕
-    if (lineId === OWNER_LINE_ID) {
+    // 🌟 離線/異常防護網：讀取設備通行證 (適用所有管理員) 或是 創始人 ID
+    const isCachedAdmin = localStorage.getItem('tcfsh_is_admin') === 'true';
+    
+    if (lineId === OWNER_LINE_ID || isCachedAdmin) {
       document.getElementById('adminEntryBtn').classList.remove('hidden');
     }
-    alert(`資料連線異常 (${err.message})。\n\n💡 提示：若您是系統管理員，可點擊首頁按鈕或連續點擊左上角 Logo 5次，強制開啟管理員通道。`);
+    
+    alert(`資料連線異常 (${err.message})。\n\n💡 提示：若您是系統管理員，您的專屬入口將自動保留。您也可連續點擊左上角 Logo 5次，輸入密碼強制開啟通道。`);
   }
 }
 
