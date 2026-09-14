@@ -23,7 +23,6 @@
 <body class="bg-slate-100 min-h-screen font-sans text-gray-800">
 
   <header class="bg-blue-900 text-white p-3 shadow-md sticky top-0 z-50 flex items-center gap-3 no-print">
-    <!-- 🌟 彩蛋開關綁定在 Logo 上 -->
     <img src="logo2.jpg" alt="Logo" class="h-10 w-10 object-contain bg-white rounded-full p-0.5 cursor-pointer" onclick="handleSecretDoor()">
     <h1 class="text-[17px] font-bold tracking-wider">中華民國臺中一中校友總會</h1>
   </header>
@@ -95,6 +94,7 @@
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">專屬代碼</span><span id="cardUniqueId" class="font-mono font-bold text-blue-700">尚未產生</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡電話</span><span id="cardPhone" class="font-mono">尚未設定</span></div>
           <div class="flex justify-between"><span class="text-gray-500 font-semibold">在學學號</span><span id="cardStudentId" class="font-mono">未提供</span></div>
+          <div class="flex justify-between"><span class="text-gray-500 font-semibold">聯絡地址</span><span id="cardAddress" class="text-right w-2/3 truncate">未提供</span></div>
         </div>
       </div>
       
@@ -122,8 +122,6 @@
       </div>
       
       <button id="claimAdminBtn" onclick="claimAdmin()" class="hidden w-full bg-yellow-600 text-white font-bold py-4 rounded-lg mb-4">👑 成為首位系統管理員</button>
-      
-      <!-- 💡 移除原本的 adminEntryBtn，系統現在只有 5-tap 彩蛋單一入口 -->
     </div>
 
     <!-- 視圖 2：系統管理後台 -->
