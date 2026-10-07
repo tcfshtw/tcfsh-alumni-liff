@@ -65,7 +65,7 @@
 
   <div id="eventModal" class="fixed inset-0 bg-black/80 z-50 hidden flex flex-col items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative">
-      <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100 shrink-0"></div>
+      <div id="modalImageContainer" class="w-full flex overflow-x-auto snap-x hidden bg-gray-100 shrink-0 p-2 gap-2"></div>
       <div class="p-5 overflow-y-auto flex-1">
         <div class="flex justify-between items-start mb-2"><span id="modalTarget" class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">限定身分</span><button onclick="closeEventModal()" class="text-gray-400 text-xl leading-none">&times;</button></div>
         <h2 id="modalTitle" class="text-2xl font-bold mb-3">活動標題</h2>
@@ -88,7 +88,7 @@
         </div>
       </div>
       <div class="p-4 bg-gray-50 border-t border-gray-200 shrink-0" id="modalActionFooter">
-        <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出投票</button>
+        <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出</button>
         <p id="voteNotice" class="text-[10px] text-gray-500 text-center mt-2 hidden">💡 再次送出將會覆蓋舊選擇。</p>
       </div>
     </div>
@@ -187,15 +187,15 @@
           <div id="cohortInputDiv" class="hidden"><label class="block text-sm font-semibold text-gray-600 mb-1">輸入屆數 (例: 70-75)</label><input type="text" id="evCohort" class="w-full border p-2 rounded-lg outline-none"></div>
           <div><label class="block text-sm font-semibold text-gray-600 mb-1">內文說明</label><textarea id="evContent" rows="4" class="w-full border p-2 rounded-lg outline-none"></textarea></div>
           <div class="bg-red-50 p-3 rounded-lg border border-red-100">
-            <div class="flex justify-between items-center mb-2"><label class="block text-sm font-bold text-red-800">宣傳圖片 (可多張)</label><button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded">+ 添加照片</button></div>
+            <div class="flex justify-between items-center mb-2"><label class="block text-sm font-bold text-red-800">宣傳圖片 (可多張)</label><button type="button" onclick="document.getElementById('evImageInput').click()" class="bg-white border border-red-300 text-red-700 text-xs px-3 py-1 rounded shadow-sm hover:bg-red-50">+ 添加照片</button></div>
             <input type="file" id="evImageInput" accept="image/*" multiple class="hidden" onchange="handleImagePreview(event)">
-            <div id="imagePreviewContainer" class="flex gap-2 overflow-x-auto snap-x py-1 hidden"></div>
+            <div id="imagePreviewContainer" class="flex gap-3 overflow-x-auto snap-x py-2 hidden mt-2"></div>
           </div>
           <div id="adminVotingSection" class="hidden bg-purple-50 p-4 rounded-lg border border-purple-200">
             <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-purple-900">🗳️ 投票選項設定</h3><button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button></div>
             <div id="votingOptionsContainer" class="space-y-4"></div>
           </div>
-          <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg mt-2">建立</button>
+          <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg mt-2">極速建立活動</button>
         </form>
       </div>
     </div>
@@ -231,12 +231,11 @@
     <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
   </nav>
 
-  <!-- 🌟 將版本推進至 v=6.0 強制更新快取 -->
-  <script src="config.js?v=6.0"></script>
-  <script src="auth_guard.js?v=6.0"></script>
-  <script src="member.js?v=6.0"></script>
-  <script src="admin.js?v=6.0"></script>
-  <script src="event.js?v=6.0"></script>
-  <script src="main.js?v=6.0"></script>
+  <script src="config.js?v=7.0"></script>
+  <script src="auth_guard.js?v=7.0"></script>
+  <script src="member.js?v=7.0"></script>
+  <script src="admin.js?v=7.0"></script>
+  <script src="event.js?v=7.0"></script>
+  <script src="main.js?v=7.0"></script>
 </body>
 </html>
