@@ -1,6 +1,4 @@
 // 檔案：admin.js
-// 說明：專職處理後台內部功能（搜尋會員、修改身分、桌次管理、投票結果統計）。
-// 進入後台的密碼與權限驗證已完全移交至獨立檔案 auth_guard.js。
 
 async function claimAdmin() {
   if(!confirm("確定綁定為首位系統管理員嗎？\n(請確認上方基本資料已經儲存完畢)")) return;
@@ -103,7 +101,7 @@ async function loadAdminEvents() {
       if(result.events.length === 0) container.innerHTML = '<p class="text-sm text-gray-500">目前無活動</p>';
       result.events.forEach(evt => {
         const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">🍽️ 進入桌次安排系統</button>` : '';
-        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">📊 檢視參與/投票結果</button>`;
+        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">📊 檢視參與/結果</button>`;
         
         container.innerHTML += `
           <div class="border border-gray-200 p-4 rounded-lg bg-gray-50 mb-3 shadow-sm">
@@ -119,7 +117,7 @@ async function loadAdminEvents() {
 }
 
 async function viewEventResults(eventId, year, title, type) {
-  document.getElementById('resultModalTitle').innerText = title + " (" + type + "統計)";
+  document.getElementById('resultModalTitle').innerText = title + " (統計)";
   const content = document.getElementById('resultModalContent');
   content.innerHTML = '<p class="text-center text-gray-500 py-4">載入數據中...</p>';
   document.getElementById('adminEventResultModal').classList.remove('hidden');
@@ -130,20 +128,27 @@ async function viewEventResults(eventId, year, title, type) {
     if (result.status === 'success') {
       if (result.total === 0) { content.innerHTML = '<p class="text-center text-gray-500 py-4">目前尚無任何紀錄</p>'; return; }
       content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/投票人數：${result.total} 人</p>`;
+      
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
       sortedData.forEach(item => {
         const optName = item[0];
         const count = item[1];
-        const pct = Math.round((count / result.total) * 100);
-        content.innerHTML += `
-          <div class="mb-3">
-            <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
-              <span>${optName}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-3">
-              <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
-            </div>
-          </div>`;
+        
+        // 如果是問答類，直接條列文字即可，不顯示長條圖
+        if (type.includes('問答')) {
+          content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-purple-900 font-bold whitespace-pre-wrap">${optName}</div>`;
+        } else {
+          const pct = Math.round((count / result.total) * 100);
+          content.innerHTML += `
+            <div class="mb-3">
+              <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
+                <span>${optName}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3">
+                <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
+              </div>
+            </div>`;
+        }
       });
     } else { content.innerHTML = '<p class="text-center text-red-500 py-4">讀取失敗</p>'; }
   } catch(e) { content.innerHTML = '<p class="text-center text-red-500 py-4">發生錯誤</p>'; }
@@ -209,8 +214,16 @@ let votingOptionsCount = 0;
 function toggleAdminVotingSection() {
   const type = document.getElementById('evType').value;
   const section = document.getElementById('adminVotingSection');
-  if (type === '投票') { section.classList.remove('hidden'); if(votingOptionsCount === 0) addVotingOptionUI(); } 
-  else { section.classList.add('hidden'); document.getElementById('votingOptionsContainer').innerHTML = ""; votingOptionsCount = 0; }
+  
+  // 🌟 只要是包含「投票」或「問答」字眼的類型，都顯示選項設定區塊
+  if (type.includes('投票') || type.includes('問答')) { 
+    section.classList.remove('hidden'); 
+    if(votingOptionsCount === 0) addVotingOptionUI(); 
+  } else { 
+    section.classList.add('hidden'); 
+    document.getElementById('votingOptionsContainer').innerHTML = ""; 
+    votingOptionsCount = 0; 
+  }
 }
 
 function addVotingOptionUI() {
@@ -219,7 +232,7 @@ function addVotingOptionUI() {
   const html = `
     <div id="${id}" class="bg-white p-3 rounded border border-purple-200 relative shadow-sm">
       <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-2 right-2 text-red-500 font-bold">&times;</button>
-      <input type="text" placeholder="選項標題 (例: 方案A)" class="vote-opt-title w-full border-b border-gray-300 p-1 outline-none mb-2 font-bold text-purple-900" required>
+      <input type="text" placeholder="選項標題 (例: 方案A 或 問題標題)" class="vote-opt-title w-full border-b border-gray-300 p-1 outline-none mb-2 font-bold text-purple-900" required>
       <textarea placeholder="選項說明 (選填)" class="vote-opt-desc w-full border border-gray-200 p-2 rounded text-sm outline-none mb-2" rows="2"></textarea>
       <input type="file" accept="image/*" class="vote-opt-img text-xs w-full">
     </div>`;
