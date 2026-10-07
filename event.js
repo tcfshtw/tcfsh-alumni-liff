@@ -18,7 +18,6 @@ async function handleImagePreview(event) {
   renderImagePreviews();
 }
 
-// 💡 新增：圖片刪除並重新渲染功能
 function renderImagePreviews() {
   const container = document.getElementById('imagePreviewContainer'); 
   container.innerHTML = "";
@@ -61,7 +60,7 @@ async function submitCreateEvent() {
   const targetRole = document.getElementById('evRole').value;
 
   let votingOptionsData = [];
-  if (type === '投票') {
+  if (type.includes('投票') || type.includes('問答')) {
     const optDivs = document.getElementById('votingOptionsContainer').children;
     for(let div of optDivs) {
       let vTitle = div.querySelector('.vote-opt-title').value;
@@ -74,7 +73,7 @@ async function submitCreateEvent() {
       }
       if(vTitle) votingOptionsData.push({ title: vTitle, desc: vDesc, imgBase64: baseData.imgBase64, imgMime: baseData.imgMime });
     }
-    if (votingOptionsData.length === 0) { alert("請至少新增一個投票選項！"); btn.disabled = false; btn.innerText = "建立"; return; }
+    if (votingOptionsData.length === 0) { alert("請至少新增一個設定選項！"); btn.disabled = false; btn.innerText = "建立"; return; }
   }
 
   const payload = {
@@ -97,7 +96,6 @@ function checkEligibility(targetRole, targetCohortStr) {
   if (!window.currentUserProfile) return false; 
   const myRole = window.currentUserProfile.role; const myCohortStr = window.currentUserProfile.cohort;
   if (targetRole === '全體') return true;
-  // 💡 更新：幹部(或幹部管理員)也是校友會成員
   if (targetRole === '校友會成員') return (myRole !== '一般會員(校友)' && myCohortStr !== '**');
   if (targetRole === '限定屆數') {
     if (!targetCohortStr || targetCohortStr === "全部" || targetCohortStr === "不適用") return true;
@@ -159,14 +157,11 @@ function openEventDetail(eventId, isEligible) {
   document.getElementById('modalLocation').innerText = evt.location || "未提供"; document.getElementById('modalTarget').innerText = "限：" + evt.targetRoles;
   document.getElementById('modalCohorts').innerText = evt.targetRoles === '限定屆數' ? evt.targetCohorts : "全部"; 
   
-  // 顯示截止日
   const dlLabel = document.getElementById('modalDeadlineLabel');
-  dlLabel.innerText = evt.type === '投票' ? '投票截止日：' : '報名截止日：';
+  dlLabel.innerText = (evt.type.includes('投票') || evt.type.includes('問答')) ? '截止日：' : '報名截止日：';
   document.getElementById('modalDeadline').innerText = evt.deadline ? evt.deadline.replace('T', ' ') : '無限制';
-  
   document.getElementById('modalContent').innerText = evt.content;
   
-  // 圖片點擊放大
   const imgBox = document.getElementById('modalImageContainer'); imgBox.innerHTML = "";
   const urlArray = evt.imageUrls ? evt.imageUrls.split(',').filter(u => u !== "") : [];
   if (urlArray.length > 0) {
@@ -180,23 +175,59 @@ function openEventDetail(eventId, isEligible) {
   const voteList = document.getElementById('votingOptionsList');
   const notice = document.getElementById('voteNotice');
   const extraInputs = document.getElementById('eventExtraInputs');
+  const voteSectionTitle = document.getElementById('votingSectionTitle');
   
-  if (evt.type === '投票' && evt.extraData) {
+  // 🌟 動態渲染三種不同類型的互動表單
+  if (evt.type.includes('投票') || evt.type.includes('問答')) {
     voteSection.classList.remove('hidden'); notice.classList.remove('hidden'); extraInputs.classList.add('hidden');
     voteList.innerHTML = '';
+    
+    if (evt.type === '問答 (填答)') {
+      voteSectionTitle.innerText = "📝 請填寫以下問答";
+      notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
+    } else if (evt.type === '投票 (多選)') {
+      voteSectionTitle.innerText = "☑️ 請勾選您的方案 (可複選)";
+      notice.innerText = "💡 再次送出將會覆蓋舊選擇。";
+    } else {
+      voteSectionTitle.innerText = "🔘 請選擇您的方案 (單選)";
+      notice.innerText = "💡 再次送出將會覆蓋舊選擇。";
+    }
+
     const options = JSON.parse(evt.extraData);
     options.forEach((opt, idx) => {
-      const imgHtml = opt.imgUrl ? `<img src="${opt.imgUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
-      voteList.innerHTML += `
-        <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition">
-          <input type="radio" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 focus:ring-purple-500">
-          <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500">${opt.desc || ''}</div></div>
-          ${imgHtml}
-        </label>`;
+      const imgHtml = opt.imgUrl ? `<img src="${opt.imgUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+      
+      if (evt.type === '投票 (單選)') {
+        voteList.innerHTML += `
+          <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition">
+            <input type="radio" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 focus:ring-purple-500">
+            <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500">${opt.desc || ''}</div></div>
+            ${imgHtml}
+          </label>`;
+      } else if (evt.type === '投票 (多選)') {
+        voteList.innerHTML += `
+          <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition">
+            <input type="checkbox" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 rounded focus:ring-purple-500">
+            <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500">${opt.desc || ''}</div></div>
+            ${imgHtml}
+          </label>`;
+      } else if (evt.type === '問答 (填答)') {
+        voteList.innerHTML += `
+          <div class="p-3 border border-gray-200 rounded-lg mb-2 bg-white">
+            <div class="flex items-start">
+              <div class="flex-1">
+                <div class="font-bold text-purple-900 mb-1">${opt.title}</div>
+                <div class="text-xs text-gray-500 mb-2">${opt.desc || ''}</div>
+                <input type="text" data-title="${opt.title}" class="vote-text-input w-full border border-gray-300 p-2 rounded outline-none text-sm focus:border-purple-500" placeholder="請填寫對應答案">
+              </div>
+              ${imgHtml}
+            </div>
+          </div>`;
+      }
     });
   } else { 
     voteSection.classList.add('hidden'); notice.classList.add('hidden'); 
-    extraInputs.classList.remove('hidden'); // 顯示人數與末5碼
+    extraInputs.classList.remove('hidden'); 
     document.getElementById('evAttendeeCount').value = 1;
     document.getElementById('evPaymentDigits').value = "";
   }
@@ -209,7 +240,7 @@ function openEventDetail(eventId, isEligible) {
     btn.innerText = "🚫 已超過截止日期";
   } else if (isEligible) {
     btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-md transition";
-    btn.innerText = evt.type === '投票' ? "🗳️ 送出我的投票" : "🎟️ 確定送出報名";
+    btn.innerText = (evt.type.includes('投票') || evt.type.includes('問答')) ? "📤 確定送出資料" : "🎟️ 確定送出報名";
   } else {
     btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-lg cursor-not-allowed";
     btn.innerText = "🚫 您的身分/屆數不符";
@@ -222,14 +253,29 @@ function closeEventModal() { document.getElementById('eventModal').classList.add
 
 async function submitUserAction() {
   if(!activeEventContext) return;
-  let actionType = '報名'; let actionValue = '已報名';
+  let actionType = activeEventContext.type; 
+  let actionValue = '已報名';
   let attendeeCount = 1; let paymentDigits = "";
 
-  if (activeEventContext.type === '投票') {
-    actionType = '投票';
-    const selected = document.querySelector('input[name="voteOption"]:checked');
-    if (!selected) { alert("請先選擇一個方案！"); return; }
-    actionValue = selected.value;
+  // 🌟 動態取值邏輯 (針對單選、多選、填答作不同處理)
+  if (actionType.includes('投票') || actionType.includes('問答')) {
+    if (actionType === '投票 (單選)') {
+      const selected = document.querySelector('input[name="voteOption"]:checked');
+      if (!selected) { alert("請先選擇一個方案！"); return; }
+      actionValue = selected.value;
+    } else if (actionType === '投票 (多選)') {
+      const selected = Array.from(document.querySelectorAll('input[name="voteOption"]:checked'));
+      if (selected.length === 0) { alert("請至少勾選一個選項！"); return; }
+      actionValue = selected.map(el => el.value).join(', '); // 用逗號分隔
+    } else if (actionType === '問答 (填答)') {
+      const inputs = Array.from(document.querySelectorAll('.vote-text-input'));
+      let emptyCount = 0;
+      actionValue = inputs.map(el => {
+        if (!el.value.trim()) emptyCount++;
+        return `[${el.dataset.title}] ${el.value.trim()}`;
+      }).join('\n'); // 換行分隔
+      if (emptyCount === inputs.length) { alert("請至少填寫一個格子的答案！"); return; }
+    }
   } else {
     attendeeCount = document.getElementById('evAttendeeCount').value || 1;
     paymentDigits = document.getElementById('evPaymentDigits').value || "";
