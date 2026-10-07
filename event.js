@@ -40,10 +40,36 @@ function renderImagePreviews() {
   });
 }
 
+// 🌟 智能圖片壓縮引擎：利用 Canvas 壓縮圖片，避免大檔塞爆 GAS
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader(); reader.readAsDataURL(file);
-    reader.onload = () => resolve({ base64: reader.result.split(',')[1], mime: file.type });
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        // 計算等比例縮放
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+        }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // 壓縮成 JPEG 格式 (品質 0.8)，讓 5MB 照片變成 150KB
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+      };
+      img.src = event.target.result;
+    };
     reader.onerror = error => reject(error);
   });
 }
@@ -177,7 +203,6 @@ function openEventDetail(eventId, isEligible) {
   const extraInputs = document.getElementById('eventExtraInputs');
   const voteSectionTitle = document.getElementById('votingSectionTitle');
   
-  // 🌟 動態渲染三種不同類型的互動表單
   if (evt.type.includes('投票') || evt.type.includes('問答')) {
     voteSection.classList.remove('hidden'); notice.classList.remove('hidden'); extraInputs.classList.add('hidden');
     voteList.innerHTML = '';
@@ -257,7 +282,6 @@ async function submitUserAction() {
   let actionValue = '已報名';
   let attendeeCount = 1; let paymentDigits = "";
 
-  // 🌟 動態取值邏輯 (針對單選、多選、填答作不同處理)
   if (actionType.includes('投票') || actionType.includes('問答')) {
     if (actionType === '投票 (單選)') {
       const selected = document.querySelector('input[name="voteOption"]:checked');
@@ -266,14 +290,14 @@ async function submitUserAction() {
     } else if (actionType === '投票 (多選)') {
       const selected = Array.from(document.querySelectorAll('input[name="voteOption"]:checked'));
       if (selected.length === 0) { alert("請至少勾選一個選項！"); return; }
-      actionValue = selected.map(el => el.value).join(', '); // 用逗號分隔
+      actionValue = selected.map(el => el.value).join(', ');
     } else if (actionType === '問答 (填答)') {
       const inputs = Array.from(document.querySelectorAll('.vote-text-input'));
       let emptyCount = 0;
       actionValue = inputs.map(el => {
         if (!el.value.trim()) emptyCount++;
         return `[${el.dataset.title}] ${el.value.trim()}`;
-      }).join('\n'); // 換行分隔
+      }).join('\n');
       if (emptyCount === inputs.length) { alert("請至少填寫一個格子的答案！"); return; }
     }
   } else {
