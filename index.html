@@ -83,12 +83,12 @@
         </div>
 
         <div id="modalVotingSection" class="hidden border-t border-gray-200 pt-4 mb-4">
-          <h3 class="text-lg font-bold text-purple-800 mb-3" id="votingSectionTitle">🗳️ 請選擇或填寫</h3>
+          <h3 class="text-lg font-bold text-purple-800 mb-3" id="votingSectionTitle">🗳️ 請選擇您的方案</h3>
           <div id="votingOptionsList" class="space-y-3"></div>
         </div>
       </div>
       <div class="p-4 bg-gray-50 border-t border-gray-200 shrink-0" id="modalActionFooter">
-        <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出</button>
+        <button id="registerEvtBtn" onclick="submitUserAction()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg">🎟️ 我要報名 / 送出投票</button>
         <p id="voteNotice" class="text-[10px] text-gray-500 text-center mt-2 hidden">💡 再次送出將會覆蓋舊選擇。</p>
       </div>
     </div>
@@ -162,7 +162,6 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-semibold text-gray-600 mb-1">活動類型 *</label>
-              <!-- 🌟 下拉選單擴充：加入多選與填答 -->
               <select id="evType" onchange="toggleAdminVotingSection()" class="w-full border p-2 rounded-lg bg-white outline-none">
                 <option value="一般活動">一般活動</option>
                 <option value="聚餐">聚餐</option>
@@ -193,7 +192,7 @@
             <div id="imagePreviewContainer" class="flex gap-2 overflow-x-auto snap-x py-1 hidden"></div>
           </div>
           <div id="adminVotingSection" class="hidden bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-purple-900">🗳️ 投票/問答選項設定</h3><button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button></div>
+            <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-purple-900">🗳️ 投票選項設定</h3><button type="button" onclick="addVotingOptionUI()" class="bg-purple-600 text-white text-xs px-3 py-1 rounded shadow">+ 新增選項</button></div>
             <div id="votingOptionsContainer" class="space-y-4"></div>
           </div>
           <button type="button" onclick="submitCreateEvent()" id="createEventBtn" class="w-full bg-red-700 text-white font-bold py-3 rounded-lg mt-2">建立</button>
@@ -232,11 +231,12 @@
     <button onclick="switchTab('events')" class="flex flex-col items-center justify-center w-1/3 text-gray-400" id="tab-events"><span class="text-xl mb-1">📅</span><span class="text-[10px] font-bold">活動預告</span></button>
   </nav>
 
-  <script src="config.js?v=5.0"></script>
-  <script src="auth_guard.js?v=5.0"></script>
-  <script src="member.js?v=5.0"></script>
-  <script src="admin.js?v=5.0"></script>
-  <script src="event.js?v=5.0"></script>
-  <script src="main.js?v=5.0"></script>
+  <!-- 🌟 將版本推進至 v=6.0 強制更新快取 -->
+  <script src="config.js?v=6.0"></script>
+  <script src="auth_guard.js?v=6.0"></script>
+  <script src="member.js?v=6.0"></script>
+  <script src="admin.js?v=6.0"></script>
+  <script src="event.js?v=6.0"></script>
+  <script src="main.js?v=6.0"></script>
 </body>
 </html>
