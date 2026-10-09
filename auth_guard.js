@@ -46,7 +46,8 @@ function verifyAdminPwd() {
   
   const inputVal = pwdInput ? pwdInput.value.trim() : "";
 
-  if (inputVal === GUARD_ADMIN_PWD) { 
+  // 🌟 智慧優化：將輸入的值與正確密碼都轉為小寫，避免手機鍵盤自動大寫造成的誤判
+  if (inputVal.toLowerCase() === GUARD_ADMIN_PWD.toLowerCase()) { 
     // A. 關閉密碼視窗
     if (modal) modal.classList.add('hidden'); 
     
