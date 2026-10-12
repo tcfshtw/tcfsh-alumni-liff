@@ -7,10 +7,8 @@ function toggleRoleInput() {
   else { cohortDiv.classList.add('hidden'); document.getElementById('evCohort').value = ""; }
 }
 
-// 存放即時上傳成功後的公開網址
-let selectedImages = []; 
+let selectedImages = [];
 
-// 🌟 讀取原圖 Base64 (無壓縮)
 function fileToBase64Original(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -20,7 +18,6 @@ function fileToBase64Original(file) {
   });
 }
 
-// 🌟 活動主宣傳圖：即時非同步上傳引擎
 async function handleImagePreview(event) {
   const files = event.target.files;
   if (!files || files.length === 0) return;
@@ -54,7 +51,6 @@ async function handleImagePreview(event) {
   }
 }
 
-// 重新渲染成功上傳的縮圖 (可點擊刪除)
 function renderImagePreviews() {
   const container = document.getElementById('imagePreviewContainer'); 
   container.innerHTML = "";
@@ -67,13 +63,13 @@ function renderImagePreviews() {
     const imgDiv = document.createElement('div'); 
     imgDiv.className = "relative min-w-[80px] h-20 bg-cover bg-center rounded border border-gray-300 snap-start shrink-0 cursor-pointer shadow-sm";
     imgDiv.style.backgroundImage = `url('${url}')`;
-    imgDiv.onclick = () => window.open(url, '_blank'); // 點擊放大檢視
+    imgDiv.onclick = () => window.open(url, '_blank'); 
     
     const delBtn = document.createElement('button');
     delBtn.innerHTML = "&times;";
     delBtn.className = "absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-md hover:bg-red-700";
     delBtn.onclick = (e) => { 
-      e.stopPropagation(); // 避免觸發點擊放大
+      e.stopPropagation(); 
       selectedImages.splice(idx, 1); 
       renderImagePreviews(); 
     };
@@ -82,7 +78,6 @@ function renderImagePreviews() {
   });
 }
 
-// 🌟 投票選項圖片：即時非同步上傳引擎
 async function handleVotingImageUpload(inputEl, optId) {
   if (!inputEl.files || inputEl.files.length === 0) return;
   const file = inputEl.files[0];
@@ -101,7 +96,7 @@ async function handleVotingImageUpload(inputEl, optId) {
     const result = await response.json();
     
     if (result.status === 'success') {
-      statusEl.innerText = "✅ 上傳成功";
+      statusEl.innerText = "✅ 圖片就緒";
       statusEl.classList.remove('text-blue-600', 'animate-pulse');
       statusEl.classList.add('text-green-600');
       hiddenUrlEl.value = result.url;
@@ -119,43 +114,6 @@ async function handleVotingImageUpload(inputEl, optId) {
   }
 }
 
-let votingOptionsCount = 0;
-function toggleAdminVotingSection() {
-  const type = document.getElementById('evType').value;
-  const section = document.getElementById('adminVotingSection');
-  
-  if (type.includes('投票') || type.includes('問答')) { 
-    section.classList.remove('hidden'); 
-    if(votingOptionsCount === 0) addVotingOptionUI(); 
-  } else { 
-    section.classList.add('hidden'); 
-    document.getElementById('votingOptionsContainer').innerHTML = ""; 
-    votingOptionsCount = 0; 
-  }
-}
-
-function addVotingOptionUI() {
-  votingOptionsCount++;
-  const id = `voteOpt_${Date.now()}`;
-  const html = `
-    <div id="${id}" class="bg-white p-3 rounded border border-purple-200 relative shadow-sm">
-      <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-2 right-2 text-red-500 font-bold hover:bg-red-50 rounded-full w-6 h-6 flex items-center justify-center">&times;</button>
-      <input type="text" placeholder="選項標題 (例: 方案A 或 問題標題)" class="vote-opt-title w-full border-b border-gray-300 p-1 outline-none mb-2 font-bold text-purple-900 focus:border-purple-600 transition" required>
-      <textarea placeholder="選項說明 (選填)" class="vote-opt-desc w-full border border-gray-200 p-2 rounded text-sm outline-none mb-2 focus:border-purple-600 transition" rows="2"></textarea>
-      
-      <div class="mt-2 flex items-center gap-2">
-        <label class="bg-purple-100 text-purple-700 px-3 py-1.5 rounded text-xs font-bold cursor-pointer hover:bg-purple-200 transition shadow-sm">
-          📷 上傳專屬圖片
-          <input type="file" accept="image/*" class="hidden" onchange="handleVotingImageUpload(this, '${id}')">
-        </label>
-        <span id="status_${id}" class="text-xs text-gray-500 font-bold"></span>
-      </div>
-      <input type="hidden" class="vote-opt-img-url" value="">
-      <div id="preview_${id}" class="mt-3 hidden h-24 w-24 bg-cover bg-center rounded border border-gray-300 shadow-sm cursor-pointer" onclick="window.open(this.style.backgroundImage.slice(5, -2), '_blank')"></div>
-    </div>`;
-  document.getElementById('votingOptionsContainer').insertAdjacentHTML('beforeend', html);
-}
-
 async function submitCreateEvent() {
   const title = document.getElementById('evTitle').value; 
   const date = document.getElementById('evDate').value; 
@@ -168,21 +126,33 @@ async function submitCreateEvent() {
   const targetRole = document.getElementById('evRole').value;
 
   let votingOptionsData = [];
-  if (type.includes('投票') || type.includes('問答')) {
-    const optDivs = document.getElementById('votingOptionsContainer').children;
+  if (type.includes('問卷')) {
+    const optDivs = document.getElementById('votingOptionsContainer').querySelectorAll('.question-block');
+    
     for(let div of optDivs) {
       let vTitle = div.querySelector('.vote-opt-title').value;
       let vDesc = div.querySelector('.vote-opt-desc').value;
-      let imgUrl = div.querySelector('.vote-opt-img-url').value; // 直接取用已經上傳好的 URL
+      let imgUrl = div.querySelector('.vote-opt-img-url').value; 
+      let qType = div.querySelector('.vote-opt-type').value; 
       
+      let answers = [];
+      if (qType !== 'text') {
+        const ansInputs = div.querySelectorAll('.ans-input');
+        ansInputs.forEach((input, idx) => {
+          if (input.value.trim()) {
+            const letter = String.fromCharCode(65 + idx);
+            answers.push(`${letter}. ${input.value.trim()}`);
+          }
+        });
+      }
+
       if(vTitle) {
-        votingOptionsData.push({ title: vTitle, desc: vDesc, imgUrl: imgUrl });
+        votingOptionsData.push({ title: vTitle, desc: vDesc, imgUrl: imgUrl, qType: qType, answers: answers });
       }
     }
-    if (votingOptionsData.length === 0) { alert("請至少新增一個設定選項！"); btn.disabled = false; btn.innerText = "建立"; return; }
+    if (votingOptionsData.length === 0) { alert("請至少新增一個題目！"); btn.disabled = false; btn.innerText = "建立"; return; }
   }
 
-  // 💡 極速上傳 Payload：因為圖片已經變成網址，現在傳送的資料不到 1KB，絕不崩潰！
   const payload = {
     action: 'createEvent', title: title, type: type, date: date, deadline: deadline, location: document.getElementById('evLoc').value,
     targetRoles: targetRole, targetCohorts: targetRole === '限定屆數' ? (document.getElementById('evCohort').value || "全部") : "不適用",
@@ -255,6 +225,7 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
+// 🌟 核心：前台問卷「高級感反饋介面」渲染引擎
 function openEventDetail(eventId, isEligible) {
   const evt = window.allEvents.find(e => e.id === eventId);
   if(!evt) return;
@@ -265,7 +236,7 @@ function openEventDetail(eventId, isEligible) {
   document.getElementById('modalCohorts').innerText = evt.targetRoles === '限定屆數' ? evt.targetCohorts : "全部"; 
   
   const dlLabel = document.getElementById('modalDeadlineLabel');
-  dlLabel.innerText = (evt.type.includes('投票') || evt.type.includes('問答')) ? '截止日：' : '報名截止日：';
+  dlLabel.innerText = (evt.type.includes('問卷')) ? '截止日：' : '報名截止日：';
   document.getElementById('modalDeadline').innerText = evt.deadline ? evt.deadline.replace('T', ' ') : '無限制';
   document.getElementById('modalContent').innerText = evt.content;
   
@@ -284,53 +255,46 @@ function openEventDetail(eventId, isEligible) {
   const extraInputs = document.getElementById('eventExtraInputs');
   const voteSectionTitle = document.getElementById('votingSectionTitle');
   
-  if (evt.type.includes('投票') || evt.type.includes('問答')) {
+  if (evt.type.includes('問卷')) {
     voteSection.classList.remove('hidden'); notice.classList.remove('hidden'); extraInputs.classList.add('hidden');
     voteList.innerHTML = '';
     
-    if (evt.type === '問答 (填答)') {
-      voteSectionTitle.innerText = "📝 請填寫以下問答";
-      notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
-    } else if (evt.type === '投票 (多選)') {
-      voteSectionTitle.innerText = "☑️ 請勾選您的方案 (可複選)";
-      notice.innerText = "💡 再次送出將會覆蓋舊選擇。";
-    } else {
-      voteSectionTitle.innerText = "🔘 請選擇您的方案 (單選)";
-      notice.innerText = "💡 再次送出將會覆蓋舊選擇。";
-    }
+    voteSectionTitle.innerText = "📝 請填寫以下問卷";
+    notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
 
     const options = JSON.parse(evt.extraData);
     options.forEach((opt, idx) => {
-      // 顯示已經非同步上傳好的圖片 URL
-      const imgHtml = opt.imgUrl ? `<img src="${opt.imgUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer border border-gray-200 shadow-sm hover:scale-105 transition" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+      const imgHtml = opt.imgUrl ? `<img src="${opt.imgUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
       
-      if (evt.type === '投票 (單選)') {
-        voteList.innerHTML += `
-          <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition bg-white shadow-sm">
-            <input type="radio" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 focus:ring-purple-500">
-            <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500 mt-1">${opt.desc || ''}</div></div>
-            ${imgHtml}
-          </label>`;
-      } else if (evt.type === '投票 (多選)') {
-        voteList.innerHTML += `
-          <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-purple-50 transition bg-white shadow-sm">
-            <input type="checkbox" name="voteOption" value="${opt.title}" class="w-5 h-5 text-purple-600 rounded focus:ring-purple-500">
-            <div class="ml-3 flex-1"><div class="font-bold text-purple-900">${opt.title}</div><div class="text-xs text-gray-500 mt-1">${opt.desc || ''}</div></div>
-            ${imgHtml}
-          </label>`;
-      } else if (evt.type === '問答 (填答)') {
-        voteList.innerHTML += `
-          <div class="p-3 border border-gray-200 rounded-lg mb-2 bg-white shadow-sm">
-            <div class="flex items-start">
-              <div class="flex-1 pr-2">
-                <div class="font-bold text-purple-900 mb-1">${opt.title}</div>
-                <div class="text-xs text-gray-500 mb-2">${opt.desc || ''}</div>
-                <input type="text" data-title="${opt.title}" class="vote-text-input w-full border border-gray-300 p-2 rounded outline-none text-sm focus:border-purple-500 transition" placeholder="請填寫對應答案">
-              </div>
-              ${imgHtml}
-            </div>
-          </div>`;
+      let answersHtml = '';
+      if (opt.qType === 'text') {
+        answersHtml = `<input type="text" name="voteOption_${idx}" data-title="${opt.title}" class="w-full border-b-2 border-gray-300 p-2 outline-none text-gray-800 focus:border-purple-600 transition bg-transparent" placeholder="您的回答">`;
+      } else {
+        opt.answers.forEach(ans => {
+           const inputType = opt.qType === 'checkbox' ? 'checkbox' : 'radio';
+           const shape = opt.qType === 'checkbox' ? 'rounded-md' : 'rounded-full';
+           
+           // 💡 高級專屬感：使用 peer 隱藏原生輸入框，自訂 Tailwind CSS 卡片動畫回饋
+           answersHtml += `
+             <label class="relative block cursor-pointer group mb-3">
+               <input type="${inputType}" name="voteOption_${idx}" value="${ans}" class="peer sr-only">
+               <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all duration-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 peer-checked:shadow-sm hover:border-purple-200 flex items-center">
+                 <div class="w-5 h-5 ${shape} border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
+                   <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                 </div>
+                 <span class="text-gray-700 font-bold text-sm peer-checked:text-purple-900 transition-colors">${ans}</span>
+               </div>
+             </label>`;
+        });
       }
+
+      voteList.innerHTML += `
+        <div class="p-5 border border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">
+          <div class="font-bold text-gray-800 text-lg mb-1 leading-tight"><span class="text-purple-600 mr-1">${idx+1}.</span> ${opt.title}</div>
+          ${opt.desc ? `<div class="text-xs text-gray-500 mb-3">${opt.desc}</div>` : ''}
+          ${imgHtml}
+          <div class="mt-4">${answersHtml}</div>
+        </div>`;
     });
   } else { 
     voteSection.classList.add('hidden'); notice.classList.add('hidden'); 
@@ -343,13 +307,13 @@ function openEventDetail(eventId, isEligible) {
   const isPassed = evt.deadline && new Date() > new Date(evt.deadline);
 
   if (isPassed) {
-    btn.disabled = true; btn.className = "w-full bg-red-800 text-gray-300 font-bold py-3 rounded-lg cursor-not-allowed";
+    btn.disabled = true; btn.className = "w-full bg-red-800 text-gray-300 font-bold py-4 rounded-xl cursor-not-allowed";
     btn.innerText = "🚫 已超過截止日期";
   } else if (isEligible) {
-    btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-md transition";
-    btn.innerText = (evt.type.includes('投票') || evt.type.includes('問答')) ? "📤 確定送出資料" : "🎟️ 確定送出報名";
+    btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-md transition active:scale-95";
+    btn.innerText = (evt.type.includes('問卷')) ? "📤 確定送出問卷" : "🎟️ 確定送出報名";
   } else {
-    btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-lg cursor-not-allowed";
+    btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed";
     btn.innerText = "🚫 您的身分/屆數不符";
   }
 
@@ -364,24 +328,40 @@ async function submitUserAction() {
   let actionValue = '已報名';
   let attendeeCount = 1; let paymentDigits = "";
 
-  if (actionType.includes('投票') || actionType.includes('問答')) {
-    if (actionType === '投票 (單選)') {
-      const selected = document.querySelector('input[name="voteOption"]:checked');
-      if (!selected) { alert("請先選擇一個方案！"); return; }
-      actionValue = selected.value;
-    } else if (actionType === '投票 (多選)') {
-      const selected = Array.from(document.querySelectorAll('input[name="voteOption"]:checked'));
-      if (selected.length === 0) { alert("請至少勾選一個選項！"); return; }
-      actionValue = selected.map(el => el.value).join(', ');
-    } else if (actionType === '問答 (填答)') {
-      const inputs = Array.from(document.querySelectorAll('.vote-text-input'));
-      let emptyCount = 0;
-      actionValue = inputs.map(el => {
-        if (!el.value.trim()) emptyCount++;
-        return `[${el.dataset.title}] ${el.value.trim()}`;
-      }).join('\n');
-      if (emptyCount === inputs.length) { alert("請至少填寫一個格子的答案！"); return; }
+  if (actionType.includes('問卷')) {
+    let resultsArray = [];
+    const options = JSON.parse(activeEventContext.extraData);
+    let isValid = true;
+
+    options.forEach((opt, idx) => {
+      if (opt.qType === 'text') {
+        const input = document.querySelector(`input[name="voteOption_${idx}"]`);
+        if (input && input.value.trim()) {
+           resultsArray.push(`[${opt.title}] ${input.value.trim()}`);
+        } else {
+           isValid = false; // 簡答題必填
+        }
+      } else if (opt.qType === 'checkbox') {
+        const checked = document.querySelectorAll(`input[name="voteOption_${idx}"]:checked`);
+        if (checked.length > 0) {
+           Array.from(checked).forEach(el => resultsArray.push(`[${opt.title}] ${el.value}`));
+        } else {
+           isValid = false; // 多選題必填
+        }
+      } else { 
+        const checked = document.querySelector(`input[name="voteOption_${idx}"]:checked`);
+        if (checked) {
+           resultsArray.push(`[${opt.title}] ${checked.value}`);
+        } else {
+           isValid = false; // 單選題必填
+        }
+      }
+    });
+
+    if (!isValid) {
+      alert("請確保每一題都已填寫或選擇！"); return;
     }
+    actionValue = resultsArray.join('\n');
   } else {
     attendeeCount = document.getElementById('evAttendeeCount').value || 1;
     paymentDigits = document.getElementById('evPaymentDigits').value || "";
