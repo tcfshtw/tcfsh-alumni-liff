@@ -127,16 +127,16 @@ async function viewEventResults(eventId, year, title, type) {
     const result = await response.json();
     if (result.status === 'success') {
       if (result.total === 0) { content.innerHTML = '<p class="text-center text-gray-500 py-4">目前尚無任何紀錄</p>'; return; }
-      content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/投票人數：${result.total} 人</p>`;
+      content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/作答數：${result.total} 筆</p>`;
       
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
       sortedData.forEach(item => {
         const optName = item[0];
         const count = item[1];
         
-        // 如果是問答類，直接條列文字即可，不顯示長條圖
-        if (type.includes('問答')) {
-          content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-purple-900 font-bold whitespace-pre-wrap">${optName}</div>`;
+        // 問卷類型統一文字列出，不畫長條圖，以防版面錯亂
+        if (type.includes('問卷')) {
+          content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-purple-900 font-bold whitespace-pre-wrap">${optName} <span class="text-blue-700">(${count}票)</span></div>`;
         } else {
           const pct = Math.round((count / result.total) * 100);
           content.innerHTML += `
@@ -210,13 +210,14 @@ async function saveSeatingToServer() {
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
 }
 
+// 🌟 核心：Google Forms 風格的問卷產生器
 let votingOptionsCount = 0;
+
 function toggleAdminVotingSection() {
   const type = document.getElementById('evType').value;
   const section = document.getElementById('adminVotingSection');
   
-  // 🌟 只要是包含「投票」或「問答」字眼的類型，都顯示選項設定區塊
-  if (type.includes('投票') || type.includes('問答')) { 
+  if (type.includes('問卷')) { 
     section.classList.remove('hidden'); 
     if(votingOptionsCount === 0) addVotingOptionUI(); 
   } else { 
@@ -226,15 +227,82 @@ function toggleAdminVotingSection() {
   }
 }
 
+// 動態切換顯示「答案列表」或隱藏 (如果是簡答題，就不需要新增選項)
+function handleQuestionTypeChange(selectEl, questionId) {
+  const ansContainer = document.getElementById(`ansBlock_${questionId}`);
+  if (selectEl.value === 'text') {
+    ansContainer.classList.add('hidden');
+  } else {
+    ansContainer.classList.remove('hidden');
+  }
+}
+
 function addVotingOptionUI() {
   votingOptionsCount++;
   const id = `voteOpt_${Date.now()}`;
+  
+  // 導入 Google 表單卡片風格：頂部紫色粗邊框
   const html = `
-    <div id="${id}" class="bg-white p-3 rounded border border-purple-200 relative shadow-sm">
-      <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-2 right-2 text-red-500 font-bold">&times;</button>
-      <input type="text" placeholder="選項標題 (例: 方案A 或 問題標題)" class="vote-opt-title w-full border-b border-gray-300 p-1 outline-none mb-2 font-bold text-purple-900" required>
-      <textarea placeholder="選項說明 (選填)" class="vote-opt-desc w-full border border-gray-200 p-2 rounded text-sm outline-none mb-2" rows="2"></textarea>
-      <input type="file" accept="image/*" class="vote-opt-img text-xs w-full">
+    <div id="${id}" class="bg-white p-5 rounded-xl border border-gray-200 border-t-8 border-t-purple-600 relative shadow-md question-block mb-6">
+      <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-3 right-3 text-red-400 hover:text-red-600 font-bold rounded-full w-6 h-6 flex items-center justify-center text-2xl">&times;</button>
+      
+      <div class="flex gap-4 mb-4 items-start">
+        <div class="flex-1">
+          <input type="text" placeholder="📝 題目 (例如：您的衣服尺寸？)" class="vote-opt-title w-full border-b-2 border-gray-200 p-2 outline-none font-bold text-gray-800 text-lg focus:border-purple-600 transition" required>
+        </div>
+        <div class="w-1/3">
+          <select class="vote-opt-type w-full border p-2 rounded-lg bg-gray-50 text-gray-700 outline-none focus:ring-2 ring-purple-300 font-bold" onchange="handleQuestionTypeChange(this, '${id}')">
+            <option value="radio">🔘 單選題</option>
+            <option value="checkbox">☑️ 多選題</option>
+            <option value="text">✍️ 簡答題</option>
+          </select>
+        </div>
+      </div>
+      
+      <textarea placeholder="題目說明 (選填)" class="vote-opt-desc w-full border-b border-gray-200 p-2 text-sm outline-none mb-3 text-gray-500 focus:border-purple-600 transition resize-none" rows="1"></textarea>
+      
+      <div class="flex items-center gap-2 mb-4">
+        <label class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded text-xs font-bold cursor-pointer hover:bg-gray-200 transition">
+          📷 插入圖片
+          <input type="file" accept="image/*" class="hidden" onchange="handleVotingImageUpload(this, '${id}')">
+        </label>
+        <span id="status_${id}" class="text-xs text-gray-500 font-bold"></span>
+      </div>
+      <input type="hidden" class="vote-opt-img-url" value="">
+      <div id="preview_${id}" class="mb-4 hidden h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" onclick="window.open(this.style.backgroundImage.slice(5, -2), '_blank')"></div>
+
+      <!-- 答案選項區塊 -->
+      <div id="ansBlock_${id}">
+        <div id="ansList_${id}" class="space-y-2 mb-3"></div>
+        <button type="button" onclick="addAnswerOption('${id}')" class="text-purple-600 font-bold text-sm hover:underline px-2">+ 新增選項</button>
+      </div>
     </div>`;
   document.getElementById('votingOptionsContainer').insertAdjacentHTML('beforeend', html);
+  
+  addAnswerOption(id);
+  addAnswerOption(id);
+}
+
+function addAnswerOption(questionId) {
+  const container = document.getElementById(`ansList_${questionId}`);
+  const count = container.children.length;
+  const letter = String.fromCharCode(65 + count); 
+  
+  const html = `
+    <div class="flex items-center gap-3 ans-item group">
+       <div class="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+       <span class="font-bold text-gray-500 text-sm ans-letter w-4">${letter}.</span>
+       <input type="text" placeholder="選項內容" class="ans-input flex-1 border-b border-gray-200 p-1 text-sm outline-none text-gray-700 focus:border-purple-600 transition">
+       <button type="button" onclick="this.parentElement.remove(); updateAnswerLetters('${questionId}');" class="text-gray-300 hover:text-red-500 font-bold text-xl px-2 opacity-0 group-hover:opacity-100 transition">&times;</button>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+function updateAnswerLetters(questionId) {
+  const container = document.getElementById(`ansList_${questionId}`);
+  Array.from(container.children).forEach((item, idx) => {
+    const letter = String.fromCharCode(65 + idx);
+    item.querySelector('.ans-letter').innerText = `${letter}.`;
+  });
 }
