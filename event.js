@@ -8,14 +8,45 @@ function toggleRoleInput() {
 }
 
 let selectedImages = [];
+let pendingUploads = 0; 
 
-function fileToBase64Original(file) {
+function compressImageTo1080p(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve({ base64: reader.result.split(',')[1], mime: file.type });
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1920;
+        const MAX_HEIGHT = 1080;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+        }
+        
+        canvas.width = width; 
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+      };
+      img.src = event.target.result;
+    };
     reader.onerror = error => reject(error);
   });
+}
+
+function getSafeFilenamePrefix() {
+  const title = document.getElementById('evTitle').value || '未命名活動';
+  const dateStr = document.getElementById('evDate').value ? document.getElementById('evDate').value.split('T')[0] : '未定日期';
+  return `${title.replace(/[:\\/?*\[\]]/g, '')}_${dateStr}`;
 }
 
 async function handleImagePreview(event) {
@@ -25,28 +56,38 @@ async function handleImagePreview(event) {
   container.classList.remove('hidden');
 
   for (let file of files) {
+    pendingUploads++; 
     const placeholderId = 'img_' + Date.now() + Math.floor(Math.random() * 100);
     const imgDiv = document.createElement('div');
     imgDiv.id = placeholderId;
-    imgDiv.className = "relative min-w-[80px] h-20 bg-gray-200 bg-cover bg-center rounded border border-gray-300 snap-start shrink-0 flex items-center justify-center";
-    imgDiv.innerHTML = `<span class="text-[10px] text-gray-500 font-bold loading-text animate-pulse">上傳中...</span>`;
+    imgDiv.className = "relative min-w-[80px] h-20 bg-gray-200 bg-cover bg-center rounded border border-gray-300 snap-start shrink-0 flex items-center justify-center p-2 text-center";
+    imgDiv.innerHTML = `<span class="text-[10px] text-gray-500 font-bold loading-text animate-pulse">壓縮上傳中...</span>`;
     container.appendChild(imgDiv);
 
     try {
-      const baseData = await fileToBase64Original(file);
-      const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: file.name };
+      const baseData = await compressImageTo1080p(file);
+      // 宣傳圖片命名
+      const filename = `${getSafeFilenamePrefix()}_宣傳圖_${Date.now().toString().slice(-4)}.jpg`;
+      const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: filename };
       
-      const res = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      const res = await fetch(GAS_API_URL, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        redirect: 'follow',
+        body: JSON.stringify(payload) 
+      });
       const result = await res.json();
 
       if (result.status === 'success') {
         selectedImages.push(result.url); 
         renderImagePreviews(); 
       } else {
-        document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500">上傳失敗</span>`;
+        document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500 font-bold break-all">${result.message || '上傳失敗'}</span>`;
       }
     } catch(e) {
-      document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500">網路錯誤</span>`;
+      document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500 font-bold">網路連線超時</span>`;
+    } finally {
+      pendingUploads--; 
     }
   }
 }
@@ -80,19 +121,35 @@ function renderImagePreviews() {
 
 async function handleVotingImageUpload(inputEl, optId) {
   if (!inputEl.files || inputEl.files.length === 0) return;
+  pendingUploads++; 
   const file = inputEl.files[0];
   const statusEl = document.getElementById(`status_${optId}`);
   const previewEl = document.getElementById(`preview_${optId}`);
   const hiddenUrlEl = document.querySelector(`#${optId} .vote-opt-img-url`);
 
-  statusEl.innerText = "上傳中...";
+  statusEl.innerText = "壓縮上傳中...";
   statusEl.classList.remove('text-gray-500', 'text-green-600', 'text-red-500');
   statusEl.classList.add('text-blue-600', 'animate-pulse');
   
   try {
-    const baseData = await fileToBase64Original(file);
-    const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: file.name };
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    // 🌟 計算這是第幾題，產生 01, 02 的編號
+    const optDivs = document.getElementById('votingOptionsContainer').querySelectorAll('.question-block');
+    let orderNum = "01";
+    optDivs.forEach((div, index) => {
+      if (div.id === optId) orderNum = String(index + 1).padStart(2, '0');
+    });
+
+    const baseData = await compressImageTo1080p(file);
+    // 🌟 精準命名：投票活動名稱 + 活動時間 + 從01開始編碼的數字
+    const filename = `${getSafeFilenamePrefix()}_Q${orderNum}.jpg`;
+    
+    const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: filename };
+    const response = await fetch(GAS_API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(payload) 
+    });
     const result = await response.json();
     
     if (result.status === 'success') {
@@ -103,18 +160,25 @@ async function handleVotingImageUpload(inputEl, optId) {
       previewEl.style.backgroundImage = `url('${result.url}')`;
       previewEl.classList.remove('hidden');
     } else {
-      statusEl.innerText = "❌ 失敗";
+      statusEl.innerText = `❌ ${result.message || '失敗'}`;
       statusEl.classList.remove('text-blue-600', 'animate-pulse');
       statusEl.classList.add('text-red-500');
     }
   } catch(e) {
-    statusEl.innerText = "❌ 網路錯誤";
+    statusEl.innerText = "❌ 網路超時";
     statusEl.classList.remove('text-blue-600', 'animate-pulse');
     statusEl.classList.add('text-red-500');
+  } finally {
+    pendingUploads--; 
   }
 }
 
 async function submitCreateEvent() {
+  if (pendingUploads > 0) {
+    alert("⏳ 還有圖片正在上傳中，請等出現「✅ 圖片就緒」後再點擊建立！");
+    return;
+  }
+
   const title = document.getElementById('evTitle').value; 
   const date = document.getElementById('evDate').value; 
   const type = document.getElementById('evType').value;
@@ -160,7 +224,12 @@ async function submitCreateEvent() {
   };
 
   try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const response = await fetch(GAS_API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(payload) 
+    });
     const result = await response.json();
     if (result.status === 'success') { 
       alert("✅ " + result.message); document.getElementById('createEventForm').reset(); 
@@ -225,7 +294,6 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
-// 🌟 核心：前台問卷「高級感反饋介面」渲染引擎
 function openEventDetail(eventId, isEligible) {
   const evt = window.allEvents.find(e => e.id === eventId);
   if(!evt) return;
@@ -274,7 +342,6 @@ function openEventDetail(eventId, isEligible) {
            const inputType = opt.qType === 'checkbox' ? 'checkbox' : 'radio';
            const shape = opt.qType === 'checkbox' ? 'rounded-md' : 'rounded-full';
            
-           // 💡 高級專屬感：使用 peer 隱藏原生輸入框，自訂 Tailwind CSS 卡片動畫回饋
            answersHtml += `
              <label class="relative block cursor-pointer group mb-3">
                <input type="${inputType}" name="voteOption_${idx}" value="${ans}" class="peer sr-only">
@@ -329,7 +396,7 @@ async function submitUserAction() {
   let attendeeCount = 1; let paymentDigits = "";
 
   if (actionType.includes('問卷')) {
-    let resultsArray = [];
+    let resultsObj = {}; 
     const options = JSON.parse(activeEventContext.extraData);
     let isValid = true;
 
@@ -337,23 +404,23 @@ async function submitUserAction() {
       if (opt.qType === 'text') {
         const input = document.querySelector(`input[name="voteOption_${idx}"]`);
         if (input && input.value.trim()) {
-           resultsArray.push(`[${opt.title}] ${input.value.trim()}`);
+           resultsObj[opt.title] = input.value.trim();
         } else {
-           isValid = false; // 簡答題必填
+           isValid = false; 
         }
       } else if (opt.qType === 'checkbox') {
         const checked = document.querySelectorAll(`input[name="voteOption_${idx}"]:checked`);
         if (checked.length > 0) {
-           Array.from(checked).forEach(el => resultsArray.push(`[${opt.title}] ${el.value}`));
+           resultsObj[opt.title] = Array.from(checked).map(el => el.value).join(', ');
         } else {
-           isValid = false; // 多選題必填
+           isValid = false; 
         }
       } else { 
         const checked = document.querySelector(`input[name="voteOption_${idx}"]:checked`);
         if (checked) {
-           resultsArray.push(`[${opt.title}] ${checked.value}`);
+           resultsObj[opt.title] = checked.value;
         } else {
-           isValid = false; // 單選題必填
+           isValid = false; 
         }
       }
     });
@@ -361,7 +428,7 @@ async function submitUserAction() {
     if (!isValid) {
       alert("請確保每一題都已填寫或選擇！"); return;
     }
-    actionValue = resultsArray.join('\n');
+    actionValue = JSON.stringify(resultsObj);
   } else {
     attendeeCount = document.getElementById('evAttendeeCount').value || 1;
     paymentDigits = document.getElementById('evPaymentDigits').value || "";
@@ -374,7 +441,12 @@ async function submitUserAction() {
       eventDate: activeEventContext.date, lineUserId: currentUserLineId, actionType: actionType, actionValue: actionValue,
       attendeeCount: attendeeCount, paymentDigits: paymentDigits 
     };
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const response = await fetch(GAS_API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(payload) 
+    });
     const result = await response.json();
     if(result.status === 'success') { alert("✅ " + result.message); closeEventModal(); } else alert("❌ " + result.message);
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "完成"; }
