@@ -130,19 +130,47 @@ async function viewEventResults(eventId, year, title, type) {
       content.innerHTML = `<p class="text-sm font-bold text-gray-700 mb-4 bg-gray-100 p-2 rounded">總計參與/作答數：${result.total} 筆</p>`;
       
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
+      let currentQuestion = "";
+
+      // 根據 `[題目] 選項` 進行分組顯示，讓報表井然有序
       sortedData.forEach(item => {
-        const optName = item[0];
+        const fullStr = item[0];
         const count = item[1];
         
-        // 問卷類型統一文字列出，不畫長條圖，以防版面錯亂
         if (type.includes('問卷')) {
-          content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-purple-900 font-bold whitespace-pre-wrap">${optName} <span class="text-blue-700">(${count}票)</span></div>`;
+          let match = fullStr.match(/^\[(.*?)\]\s*(.*)$/);
+          if (match) {
+            let qTitle = match[1];
+            let ansStr = match[2];
+            
+            // 遇到新題目時加上分隔標題
+            if (qTitle !== currentQuestion) {
+              content.innerHTML += `<div class="mt-4 mb-2 p-2 bg-purple-100 rounded-lg text-sm text-purple-900 font-black border border-purple-200">📌 Q: ${qTitle}</div>`;
+              currentQuestion = qTitle;
+            }
+            
+            // 如果答案沒有 A. B. C. 開頭，通常是簡答題，不用畫長條圖
+            if (!ansStr.match(/^[A-Z]\./)) {
+              content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-gray-800 font-bold whitespace-pre-wrap ml-2 border-l-4 border-purple-400">${ansStr} <span class="text-blue-700 text-xs">(${count}人)</span></div>`;
+            } else {
+              const pct = Math.round((count / result.total) * 100);
+              content.innerHTML += `
+                <div class="mb-3 ml-2">
+                  <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
+                    <span>${ansStr}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
+                  </div>
+                </div>`;
+            }
+          }
         } else {
           const pct = Math.round((count / result.total) * 100);
           content.innerHTML += `
             <div class="mb-3">
               <div class="flex justify-between text-sm font-bold text-slate-700 mb-1">
-                <span>${optName}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
+                <span>${fullStr}</span><span class="text-blue-700">${count}票 (${pct}%)</span>
               </div>
               <div class="w-full bg-gray-200 rounded-full h-3">
                 <div class="bg-blue-600 h-3 rounded-full" style="width: ${pct}%"></div>
@@ -210,7 +238,6 @@ async function saveSeatingToServer() {
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
 }
 
-// 🌟 核心：Google Forms 風格的問卷產生器
 let votingOptionsCount = 0;
 
 function toggleAdminVotingSection() {
@@ -227,7 +254,6 @@ function toggleAdminVotingSection() {
   }
 }
 
-// 動態切換顯示「答案列表」或隱藏 (如果是簡答題，就不需要新增選項)
 function handleQuestionTypeChange(selectEl, questionId) {
   const ansContainer = document.getElementById(`ansBlock_${questionId}`);
   if (selectEl.value === 'text') {
@@ -241,7 +267,6 @@ function addVotingOptionUI() {
   votingOptionsCount++;
   const id = `voteOpt_${Date.now()}`;
   
-  // 導入 Google 表單卡片風格：頂部紫色粗邊框
   const html = `
     <div id="${id}" class="bg-white p-5 rounded-xl border border-gray-200 border-t-8 border-t-purple-600 relative shadow-md question-block mb-6">
       <button type="button" onclick="document.getElementById('${id}').remove()" class="absolute top-3 right-3 text-red-400 hover:text-red-600 font-bold rounded-full w-6 h-6 flex items-center justify-center text-2xl">&times;</button>
@@ -271,7 +296,6 @@ function addVotingOptionUI() {
       <input type="hidden" class="vote-opt-img-url" value="">
       <div id="preview_${id}" class="mb-4 hidden h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" onclick="window.open(this.style.backgroundImage.slice(5, -2), '_blank')"></div>
 
-      <!-- 答案選項區塊 -->
       <div id="ansBlock_${id}">
         <div id="ansList_${id}" class="space-y-2 mb-3"></div>
         <button type="button" onclick="addAnswerOption('${id}')" class="text-purple-600 font-bold text-sm hover:underline px-2">+ 新增選項</button>
