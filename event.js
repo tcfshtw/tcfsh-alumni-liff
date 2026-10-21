@@ -10,6 +10,16 @@ function toggleRoleInput() {
 let selectedImages = [];
 let pendingUploads = 0; 
 
+// 🌟 Google 縮圖 API 轉換器 (強制將 Drive 檔案轉為可嵌入縮圖，避開白畫面)
+function getDriveThumbnailUrl(url) {
+  if (!url) return '';
+  const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+  }
+  return url;
+}
+
 function compressImageTo1080p(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -35,7 +45,7 @@ function compressImageTo1080p(file) {
         ctx.drawImage(img, 0, 0, width, height);
         
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg', dataUrl: dataUrl });
       };
       img.src = event.target.result;
     };
@@ -66,7 +76,10 @@ async function handleImagePreview(event) {
 
     try {
       const baseData = await compressImageTo1080p(file);
-      // 宣傳圖片命名
+      // 🌟 讓畫面秒速顯示上傳的圖片預覽，不再瞎猜
+      imgDiv.style.backgroundImage = `url('${baseData.dataUrl}')`;
+      imgDiv.innerHTML = `<span class="bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute bottom-1">上傳中...</span>`;
+
       const filename = `${getSafeFilenamePrefix()}_宣傳圖_${Date.now().toString().slice(-4)}.jpg`;
       const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: filename };
       
@@ -82,10 +95,10 @@ async function handleImagePreview(event) {
         selectedImages.push(result.url); 
         renderImagePreviews(); 
       } else {
-        document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500 font-bold break-all">${result.message || '上傳失敗'}</span>`;
+        document.getElementById(placeholderId).innerHTML = `<span class="bg-red-500 text-white px-1 text-[10px] font-bold">上傳失敗</span>`;
       }
     } catch(e) {
-      document.getElementById(placeholderId).innerHTML = `<span class="text-[10px] text-red-500 font-bold">網路連線超時</span>`;
+      document.getElementById(placeholderId).innerHTML = `<span class="bg-red-500 text-white px-1 text-[10px] font-bold">網路超時</span>`;
     } finally {
       pendingUploads--; 
     }
@@ -103,7 +116,10 @@ function renderImagePreviews() {
   selectedImages.forEach((url, idx) => {
     const imgDiv = document.createElement('div'); 
     imgDiv.className = "relative min-w-[80px] h-20 bg-cover bg-center rounded border border-gray-300 snap-start shrink-0 cursor-pointer shadow-sm";
-    imgDiv.style.backgroundImage = `url('${url}')`;
+    
+    // 🌟 後台建立時採用官方縮圖 API，避免破圖
+    const thumbUrl = getDriveThumbnailUrl(url);
+    imgDiv.style.backgroundImage = `url('${thumbUrl}')`;
     imgDiv.onclick = () => window.open(url, '_blank'); 
     
     const delBtn = document.createElement('button');
@@ -123,24 +139,23 @@ async function handleVotingImageUpload(inputEl, optId) {
   if (!inputEl.files || inputEl.files.length === 0) return;
   pendingUploads++; 
   const file = inputEl.files[0];
-  const statusEl = document.getElementById(`status_${optId}`);
   const previewEl = document.getElementById(`preview_${optId}`);
   const hiddenUrlEl = document.querySelector(`#${optId} .vote-opt-img-url`);
 
-  statusEl.innerText = "壓縮上傳中...";
-  statusEl.classList.remove('text-gray-500', 'text-green-600', 'text-red-500');
-  statusEl.classList.add('text-blue-600', 'animate-pulse');
-  
   try {
-    // 🌟 計算這是第幾題，產生 01, 02 的編號
+    const baseData = await compressImageTo1080p(file);
+    // 🌟 先顯示在地端，給管理員即時的視覺反饋
+    previewEl.style.backgroundImage = `url('${baseData.dataUrl}')`;
+    previewEl.innerHTML = `<span class="bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">上傳中...</span>`;
+    previewEl.classList.remove('hidden');
+    previewEl.classList.add('relative');
+
     const optDivs = document.getElementById('votingOptionsContainer').querySelectorAll('.question-block');
     let orderNum = "01";
     optDivs.forEach((div, index) => {
       if (div.id === optId) orderNum = String(index + 1).padStart(2, '0');
     });
 
-    const baseData = await compressImageTo1080p(file);
-    // 🌟 精準命名：投票活動名稱 + 活動時間 + 從01開始編碼的數字
     const filename = `${getSafeFilenamePrefix()}_Q${orderNum}.jpg`;
     
     const payload = { action: 'uploadImage', base64: baseData.base64, mime: baseData.mime, filename: filename };
@@ -153,21 +168,13 @@ async function handleVotingImageUpload(inputEl, optId) {
     const result = await response.json();
     
     if (result.status === 'success') {
-      statusEl.innerText = "✅ 圖片就緒";
-      statusEl.classList.remove('text-blue-600', 'animate-pulse');
-      statusEl.classList.add('text-green-600');
+      previewEl.innerHTML = `<span class="bg-green-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">✅ 完成</span>`;
       hiddenUrlEl.value = result.url;
-      previewEl.style.backgroundImage = `url('${result.url}')`;
-      previewEl.classList.remove('hidden');
     } else {
-      statusEl.innerText = `❌ ${result.message || '失敗'}`;
-      statusEl.classList.remove('text-blue-600', 'animate-pulse');
-      statusEl.classList.add('text-red-500');
+      previewEl.innerHTML = `<span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 失敗</span>`;
     }
   } catch(e) {
-    statusEl.innerText = "❌ 網路超時";
-    statusEl.classList.remove('text-blue-600', 'animate-pulse');
-    statusEl.classList.add('text-red-500');
+    previewEl.innerHTML = `<span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 網路異常</span>`;
   } finally {
     pendingUploads--; 
   }
@@ -175,7 +182,7 @@ async function handleVotingImageUpload(inputEl, optId) {
 
 async function submitCreateEvent() {
   if (pendingUploads > 0) {
-    alert("⏳ 還有圖片正在上傳中，請等出現「✅ 圖片就緒」後再點擊建立！");
+    alert("⏳ 還有圖片正在上傳中，請等出現「✅ 完成」後再點擊建立！");
     return;
   }
 
@@ -190,7 +197,7 @@ async function submitCreateEvent() {
   const targetRole = document.getElementById('evRole').value;
 
   let votingOptionsData = [];
-  if (type.includes('問卷')) {
+  if (type.includes('問卷') || type.includes('投票')) {
     const optDivs = document.getElementById('votingOptionsContainer').querySelectorAll('.question-block');
     
     for(let div of optDivs) {
@@ -233,7 +240,7 @@ async function submitCreateEvent() {
     const result = await response.json();
     if (result.status === 'success') { 
       alert("✅ " + result.message); document.getElementById('createEventForm').reset(); 
-      selectedImages = []; renderImagePreviews(); toggleRoleInput(); toggleAdminVotingSection(); loadAdminEvents();
+      selectedImages = []; renderImagePreviews(); toggleRoleInput(); toggleAdminVotingSection(); loadAdminEvents(); loadEvents();
     } else alert("❌ 失敗：" + result.message);
   } catch (err) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "建立"; }
 }
@@ -265,7 +272,10 @@ async function loadEvents() {
       container.innerHTML = '';
       result.events.forEach(evt => {
         const urlArray = evt.imageUrls ? evt.imageUrls.split(',') : [];
-        const coverImg = urlArray.length > 0 && urlArray[0] !== "" ? urlArray[0] : "";
+        const coverImgRaw = urlArray.length > 0 && urlArray[0] !== "" ? urlArray[0] : "";
+        // 🌟 活動首頁載入：強制使用 Google 官方 API 將 Drive 網址轉成縮圖，100% 解決無法顯示的問題
+        const coverImg = getDriveThumbnailUrl(coverImgRaw);
+        
         const bgImage = coverImg ? `style="background-image: url('${coverImg}')"` : 'style="background-color: #f3f4f6;"';
         
         let statusHtml = '';
@@ -294,6 +304,7 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
+// 🌟 修復舊版問卷相容性，點擊必定跳轉
 function openEventDetail(eventId, isEligible) {
   const evt = window.allEvents.find(e => e.id === eventId);
   if(!evt) return;
@@ -303,8 +314,11 @@ function openEventDetail(eventId, isEligible) {
   document.getElementById('modalLocation').innerText = evt.location || "未提供"; document.getElementById('modalTarget').innerText = "限：" + evt.targetRoles;
   document.getElementById('modalCohorts').innerText = evt.targetRoles === '限定屆數' ? evt.targetCohorts : "全部"; 
   
+  // 相容舊版 '投票' 類型與新版 '問卷' 類型
+  const isSurveyOrVote = evt.type.includes('問卷') || evt.type.includes('投票');
+  
   const dlLabel = document.getElementById('modalDeadlineLabel');
-  dlLabel.innerText = (evt.type.includes('問卷')) ? '截止日：' : '報名截止日：';
+  dlLabel.innerText = isSurveyOrVote ? '截止日：' : '報名截止日：';
   document.getElementById('modalDeadline').innerText = evt.deadline ? evt.deadline.replace('T', ' ') : '無限制';
   document.getElementById('modalContent').innerText = evt.content;
   
@@ -313,7 +327,8 @@ function openEventDetail(eventId, isEligible) {
   if (urlArray.length > 0) {
     imgBox.classList.remove('hidden');
     urlArray.forEach(url => { 
-      imgBox.innerHTML += `<div class="w-full h-48 flex-shrink-0 snap-center bg-cover bg-center cursor-pointer shadow-sm border border-gray-200 rounded" style="background-image: url('${url}')" onclick="window.open('${url}', '_blank')"></div>`; 
+      const thumbUrl = getDriveThumbnailUrl(url); // 🌟 使用縮圖轉換器
+      imgBox.innerHTML += `<div class="w-full h-48 flex-shrink-0 snap-center bg-cover bg-center cursor-pointer shadow-sm border border-gray-200 rounded" style="background-image: url('${thumbUrl}')" onclick="window.open('${url}', '_blank')"></div>`; 
     });
   } else { imgBox.classList.add('hidden'); }
   
@@ -323,36 +338,43 @@ function openEventDetail(eventId, isEligible) {
   const extraInputs = document.getElementById('eventExtraInputs');
   const voteSectionTitle = document.getElementById('votingSectionTitle');
   
-  if (evt.type.includes('問卷')) {
+  if (isSurveyOrVote) {
     voteSection.classList.remove('hidden'); notice.classList.remove('hidden'); extraInputs.classList.add('hidden');
     voteList.innerHTML = '';
     
-    voteSectionTitle.innerText = "📝 請填寫以下問卷";
+    voteSectionTitle.innerText = "📝 請填寫以下問卷/投票";
     notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
 
-    const options = JSON.parse(evt.extraData);
+    let options = [];
+    try { options = JSON.parse(evt.extraData); } catch(e) {}
+    
     options.forEach((opt, idx) => {
-      const imgHtml = opt.imgUrl ? `<img src="${opt.imgUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+      // 🌟 將問題附加圖片也套用縮圖轉換器
+      const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
+      const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
       
       let answersHtml = '';
       if (opt.qType === 'text') {
         answersHtml = `<input type="text" name="voteOption_${idx}" data-title="${opt.title}" class="w-full border-b-2 border-gray-300 p-2 outline-none text-gray-800 focus:border-purple-600 transition bg-transparent" placeholder="您的回答">`;
       } else {
-        opt.answers.forEach(ans => {
-           const inputType = opt.qType === 'checkbox' ? 'checkbox' : 'radio';
-           const shape = opt.qType === 'checkbox' ? 'rounded-md' : 'rounded-full';
-           
-           answersHtml += `
-             <label class="relative block cursor-pointer group mb-3">
-               <input type="${inputType}" name="voteOption_${idx}" value="${ans}" class="peer sr-only">
-               <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all duration-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 peer-checked:shadow-sm hover:border-purple-200 flex items-center">
-                 <div class="w-5 h-5 ${shape} border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
-                   <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+        if (opt.answers && opt.answers.length > 0) {
+          opt.answers.forEach(ans => {
+             // 相容舊版資料：如果 qType 沒有設定，預設為 radio
+             const inputType = (opt.qType === 'checkbox') ? 'checkbox' : 'radio';
+             const shape = (opt.qType === 'checkbox') ? 'rounded-md' : 'rounded-full';
+             
+             answersHtml += `
+               <label class="relative block cursor-pointer group mb-3">
+                 <input type="${inputType}" name="voteOption_${idx}" value="${ans}" class="peer sr-only">
+                 <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all duration-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 peer-checked:shadow-sm hover:border-purple-200 flex items-center">
+                   <div class="w-5 h-5 ${shape} border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
+                     <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                   </div>
+                   <span class="text-gray-700 font-bold text-sm peer-checked:text-purple-900 transition-colors">${ans}</span>
                  </div>
-                 <span class="text-gray-700 font-bold text-sm peer-checked:text-purple-900 transition-colors">${ans}</span>
-               </div>
-             </label>`;
-        });
+               </label>`;
+          });
+        }
       }
 
       voteList.innerHTML += `
@@ -378,7 +400,7 @@ function openEventDetail(eventId, isEligible) {
     btn.innerText = "🚫 已超過截止日期";
   } else if (isEligible) {
     btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-md transition active:scale-95";
-    btn.innerText = (evt.type.includes('問卷')) ? "📤 確定送出問卷" : "🎟️ 確定送出報名";
+    btn.innerText = isSurveyOrVote ? "📤 確定送出問卷" : "🎟️ 確定送出報名";
   } else {
     btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed";
     btn.innerText = "🚫 您的身分/屆數不符";
@@ -395,9 +417,10 @@ async function submitUserAction() {
   let actionValue = '已報名';
   let attendeeCount = 1; let paymentDigits = "";
 
-  if (actionType.includes('問卷')) {
+  if (actionType.includes('問卷') || actionType.includes('投票')) {
     let resultsObj = {}; 
-    const options = JSON.parse(activeEventContext.extraData);
+    let options = [];
+    try { options = JSON.parse(activeEventContext.extraData); } catch(e){}
     let isValid = true;
 
     options.forEach((opt, idx) => {
