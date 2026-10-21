@@ -90,6 +90,7 @@ async function grantAdminAction(targetLineId, name) {
   } catch(err) { alert("❌ 發生錯誤"); }
 }
 
+// 🌟 管理員活動列表渲染 (加入刪除活動按鈕)
 async function loadAdminEvents() {
   const container = document.getElementById('adminEventsContainer');
   container.innerHTML = '<p class="text-sm text-gray-500">載入中...</p>';
@@ -100,8 +101,9 @@ async function loadAdminEvents() {
       container.innerHTML = '';
       if(result.events.length === 0) container.innerHTML = '<p class="text-sm text-gray-500">目前無活動</p>';
       result.events.forEach(evt => {
-        const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">🍽️ 進入桌次安排系統</button>` : '';
-        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2">📊 檢視參與/結果</button>`;
+        const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-purple-700">🍽️ 進入桌次安排系統</button>` : '';
+        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-teal-700">📊 檢視參與/結果</button>`;
+        const deleteBtn = `<button onclick="deleteEventAction('${evt.id}', '${evt.title}')" class="w-full bg-red-100 text-red-700 px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-red-200">🗑️ 刪除活動</button>`;
         
         container.innerHTML += `
           <div class="border border-gray-200 p-4 rounded-lg bg-gray-50 mb-3 shadow-sm">
@@ -110,10 +112,38 @@ async function loadAdminEvents() {
             <div class="text-xs text-gray-500 mt-1">🏷️ ${evt.type} | 👥 ${evt.targetRoles}</div>
             ${seatingBtn}
             ${resultBtn}
+            ${deleteBtn}
           </div>`;
       });
     }
   } catch(e) { container.innerHTML = '載入失敗'; }
+}
+
+// 🌟 刪除活動的 API 呼叫
+async function deleteEventAction(eventId, title) {
+  if(!confirm(`⚠️ 確定要永久刪除活動「${title}」嗎？\n\n這會將活動從前台撤下，但系統會安全保留報名歷史以防萬一。`)) return;
+  document.getElementById('loadingView').classList.remove('hidden');
+  try {
+    const payload = { action: 'deleteEvent', eventId: eventId };
+    const response = await fetch(GAS_API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(payload) 
+    });
+    const result = await response.json();
+    document.getElementById('loadingView').classList.add('hidden');
+    if (result.status === 'success') {
+      alert("✅ 已成功刪除活動！");
+      loadAdminEvents();
+      if(typeof loadEvents === 'function') loadEvents(); // 刷新前台
+    } else {
+      alert("❌ 刪除失敗：" + result.message);
+    }
+  } catch(e) { 
+    document.getElementById('loadingView').classList.add('hidden'); 
+    alert("❌ 連線錯誤"); 
+  }
 }
 
 async function viewEventResults(eventId, year, title, type) {
@@ -123,7 +153,7 @@ async function viewEventResults(eventId, year, title, type) {
   document.getElementById('adminEventResultModal').classList.remove('hidden');
 
   try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEventResults', eventId: eventId, year: year }) });
+    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEventResults', eventId: eventId, year: year, type: type }) });
     const result = await response.json();
     if (result.status === 'success') {
       if (result.total === 0) { content.innerHTML = '<p class="text-center text-gray-500 py-4">目前尚無任何紀錄</p>'; return; }
@@ -132,24 +162,21 @@ async function viewEventResults(eventId, year, title, type) {
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
       let currentQuestion = "";
 
-      // 根據 `[題目] 選項` 進行分組顯示，讓報表井然有序
       sortedData.forEach(item => {
         const fullStr = item[0];
         const count = item[1];
         
-        if (type.includes('問卷')) {
+        if (type.includes('問卷') || type.includes('投票')) {
           let match = fullStr.match(/^\[(.*?)\]\s*(.*)$/);
           if (match) {
             let qTitle = match[1];
             let ansStr = match[2];
             
-            // 遇到新題目時加上分隔標題
             if (qTitle !== currentQuestion) {
               content.innerHTML += `<div class="mt-4 mb-2 p-2 bg-purple-100 rounded-lg text-sm text-purple-900 font-black border border-purple-200">📌 Q: ${qTitle}</div>`;
               currentQuestion = qTitle;
             }
             
-            // 如果答案沒有 A. B. C. 開頭，通常是簡答題，不用畫長條圖
             if (!ansStr.match(/^[A-Z]\./)) {
               content.innerHTML += `<div class="mb-2 p-2 bg-purple-50 rounded text-sm text-gray-800 font-bold whitespace-pre-wrap ml-2 border-l-4 border-purple-400">${ansStr} <span class="text-blue-700 text-xs">(${count}人)</span></div>`;
             } else {
@@ -229,22 +256,13 @@ function renderSeatingGrid() {
   });
 }
 
-async function saveSeatingToServer() {
-  const btn = document.getElementById('saveSeatingBtn'); btn.innerText = "儲存中"; btn.disabled = true;
-  try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveSeatingData', eventId: currentSeatingEventId, seatingData: JSON.stringify(seatingData) }) });
-    const result = await response.json();
-    if (result.status === 'success') alert("✅ 桌次儲存成功！"); else alert("❌ 儲存失敗");
-  } catch(e) { alert("❌ 連線錯誤"); } finally { btn.innerText = "💾 儲存"; btn.disabled = false; }
-}
-
 let votingOptionsCount = 0;
 
 function toggleAdminVotingSection() {
   const type = document.getElementById('evType').value;
   const section = document.getElementById('adminVotingSection');
   
-  if (type.includes('問卷')) { 
+  if (type.includes('問卷') || type.includes('投票')) { 
     section.classList.remove('hidden'); 
     if(votingOptionsCount === 0) addVotingOptionUI(); 
   } else { 
@@ -291,7 +309,6 @@ function addVotingOptionUI() {
           📷 插入圖片
           <input type="file" accept="image/*" class="hidden" onchange="handleVotingImageUpload(this, '${id}')">
         </label>
-        <span id="status_${id}" class="text-xs text-gray-500 font-bold"></span>
       </div>
       <input type="hidden" class="vote-opt-img-url" value="">
       <div id="preview_${id}" class="mb-4 hidden h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" onclick="window.open(this.style.backgroundImage.slice(5, -2), '_blank')"></div>
