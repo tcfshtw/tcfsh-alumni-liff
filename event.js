@@ -10,7 +10,6 @@ function toggleRoleInput() {
 let selectedImages = [];
 let pendingUploads = 0; 
 
-// 🌟 Google 縮圖 API 轉換器 (強制將 Drive 檔案轉為可嵌入縮圖，避開白畫面)
 function getDriveThumbnailUrl(url) {
   if (!url) return '';
   const match = url.match(/id=([a-zA-Z0-9_-]+)/);
@@ -76,7 +75,6 @@ async function handleImagePreview(event) {
 
     try {
       const baseData = await compressImageTo1080p(file);
-      // 🌟 讓畫面秒速顯示上傳的圖片預覽，不再瞎猜
       imgDiv.style.backgroundImage = `url('${baseData.dataUrl}')`;
       imgDiv.innerHTML = `<span class="bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute bottom-1">上傳中...</span>`;
 
@@ -117,7 +115,6 @@ function renderImagePreviews() {
     const imgDiv = document.createElement('div'); 
     imgDiv.className = "relative min-w-[80px] h-20 bg-cover bg-center rounded border border-gray-300 snap-start shrink-0 cursor-pointer shadow-sm";
     
-    // 🌟 後台建立時採用官方縮圖 API，避免破圖
     const thumbUrl = getDriveThumbnailUrl(url);
     imgDiv.style.backgroundImage = `url('${thumbUrl}')`;
     imgDiv.onclick = () => window.open(url, '_blank'); 
@@ -144,7 +141,6 @@ async function handleVotingImageUpload(inputEl, optId) {
 
   try {
     const baseData = await compressImageTo1080p(file);
-    // 🌟 先顯示在地端，給管理員即時的視覺反饋
     previewEl.style.backgroundImage = `url('${baseData.dataUrl}')`;
     previewEl.innerHTML = `<span class="bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">上傳中...</span>`;
     previewEl.classList.remove('hidden');
@@ -273,7 +269,6 @@ async function loadEvents() {
       result.events.forEach(evt => {
         const urlArray = evt.imageUrls ? evt.imageUrls.split(',') : [];
         const coverImgRaw = urlArray.length > 0 && urlArray[0] !== "" ? urlArray[0] : "";
-        // 🌟 活動首頁載入：強制使用 Google 官方 API 將 Drive 網址轉成縮圖，100% 解決無法顯示的問題
         const coverImg = getDriveThumbnailUrl(coverImgRaw);
         
         const bgImage = coverImg ? `style="background-image: url('${coverImg}')"` : 'style="background-color: #f3f4f6;"';
@@ -304,7 +299,7 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
-// 🌟 修復舊版問卷相容性，點擊必定跳轉
+// 🌟 核心修復：加入「舊版相容引擎」，避免舊投票讀取崩潰
 function openEventDetail(eventId, isEligible) {
   const evt = window.allEvents.find(e => e.id === eventId);
   if(!evt) return;
@@ -314,7 +309,6 @@ function openEventDetail(eventId, isEligible) {
   document.getElementById('modalLocation').innerText = evt.location || "未提供"; document.getElementById('modalTarget').innerText = "限：" + evt.targetRoles;
   document.getElementById('modalCohorts').innerText = evt.targetRoles === '限定屆數' ? evt.targetCohorts : "全部"; 
   
-  // 相容舊版 '投票' 類型與新版 '問卷' 類型
   const isSurveyOrVote = evt.type.includes('問卷') || evt.type.includes('投票');
   
   const dlLabel = document.getElementById('modalDeadlineLabel');
@@ -327,7 +321,7 @@ function openEventDetail(eventId, isEligible) {
   if (urlArray.length > 0) {
     imgBox.classList.remove('hidden');
     urlArray.forEach(url => { 
-      const thumbUrl = getDriveThumbnailUrl(url); // 🌟 使用縮圖轉換器
+      const thumbUrl = getDriveThumbnailUrl(url); 
       imgBox.innerHTML += `<div class="w-full h-48 flex-shrink-0 snap-center bg-cover bg-center cursor-pointer shadow-sm border border-gray-200 rounded" style="background-image: url('${thumbUrl}')" onclick="window.open('${url}', '_blank')"></div>`; 
     });
   } else { imgBox.classList.add('hidden'); }
@@ -342,24 +336,56 @@ function openEventDetail(eventId, isEligible) {
     voteSection.classList.remove('hidden'); notice.classList.remove('hidden'); extraInputs.classList.add('hidden');
     voteList.innerHTML = '';
     
-    voteSectionTitle.innerText = "📝 請填寫以下問卷/投票";
-    notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
-
     let options = [];
-    try { options = JSON.parse(evt.extraData); } catch(e) {}
+    try { options = JSON.parse(evt.extraData || '[]'); } catch(e) {}
     
-    options.forEach((opt, idx) => {
-      // 🌟 將問題附加圖片也套用縮圖轉換器
-      const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
-      const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+    // 🌟 判定是否為未升級結構的舊版投票資料
+    const isLegacyFormat = options.length > 0 && options[0].qType === undefined;
+
+    if (isLegacyFormat) {
+      // 🟢 啟動舊版相容渲染模式
+      voteSectionTitle.innerText = "🔘 請選擇您的方案 (舊版相容模式)";
+      notice.innerText = "💡 這是早期的單選活動，送出將覆蓋舊選擇。";
       
       let answersHtml = '';
-      if (opt.qType === 'text') {
-        answersHtml = `<input type="text" name="voteOption_${idx}" data-title="${opt.title}" class="w-full border-b-2 border-gray-300 p-2 outline-none text-gray-800 focus:border-purple-600 transition bg-transparent" placeholder="您的回答">`;
-      } else {
-        if (opt.answers && opt.answers.length > 0) {
-          opt.answers.forEach(ans => {
-             // 相容舊版資料：如果 qType 沒有設定，預設為 radio
+      options.forEach((opt, idx) => {
+        const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
+        const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+        
+        answersHtml += `
+          <label class="relative block cursor-pointer group mb-3">
+            <input type="radio" name="voteOption_legacy" value="${opt.title}" class="peer sr-only">
+            <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all peer-checked:border-purple-600 peer-checked:bg-purple-50 flex items-center justify-between shadow-sm hover:border-purple-200">
+              <div class="flex items-center">
+                  <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
+                    <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                  </div>
+                  <div>
+                      <div class="text-gray-700 font-bold text-sm peer-checked:text-purple-900">${opt.title}</div>
+                      <div class="text-xs text-gray-500">${opt.desc || ''}</div>
+                  </div>
+              </div>
+              ${imgHtml}
+            </div>
+          </label>`;
+      });
+      voteList.innerHTML = `<div class="p-5 border border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">${answersHtml}</div>`;
+      
+    } else {
+      // 🔵 新版多題型渲染模式
+      voteSectionTitle.innerText = "📝 請填寫以下問卷/投票";
+      notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
+
+      options.forEach((opt, idx) => {
+        const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
+        const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+        
+        let answersHtml = '';
+        if (opt.qType === 'text') {
+          answersHtml = `<input type="text" name="voteOption_${idx}" data-title="${opt.title}" class="w-full border-b-2 border-gray-300 p-2 outline-none text-gray-800 focus:border-purple-600 transition bg-transparent" placeholder="您的回答">`;
+        } else {
+          const ansArray = opt.answers || [];
+          ansArray.forEach(ans => {
              const inputType = (opt.qType === 'checkbox') ? 'checkbox' : 'radio';
              const shape = (opt.qType === 'checkbox') ? 'rounded-md' : 'rounded-full';
              
@@ -375,16 +401,16 @@ function openEventDetail(eventId, isEligible) {
                </label>`;
           });
         }
-      }
 
-      voteList.innerHTML += `
-        <div class="p-5 border border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">
-          <div class="font-bold text-gray-800 text-lg mb-1 leading-tight"><span class="text-purple-600 mr-1">${idx+1}.</span> ${opt.title}</div>
-          ${opt.desc ? `<div class="text-xs text-gray-500 mb-3">${opt.desc}</div>` : ''}
-          ${imgHtml}
-          <div class="mt-4">${answersHtml}</div>
-        </div>`;
-    });
+        voteList.innerHTML += `
+          <div class="p-5 border border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">
+            <div class="font-bold text-gray-800 text-lg mb-1 leading-tight"><span class="text-purple-600 mr-1">${idx+1}.</span> ${opt.title}</div>
+            ${opt.desc ? `<div class="text-xs text-gray-500 mb-3">${opt.desc}</div>` : ''}
+            ${imgHtml}
+            <div class="mt-4">${answersHtml}</div>
+          </div>`;
+      });
+    }
   } else { 
     voteSection.classList.add('hidden'); notice.classList.add('hidden'); 
     extraInputs.classList.remove('hidden'); 
@@ -400,7 +426,7 @@ function openEventDetail(eventId, isEligible) {
     btn.innerText = "🚫 已超過截止日期";
   } else if (isEligible) {
     btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-md transition active:scale-95";
-    btn.innerText = isSurveyOrVote ? "📤 確定送出問卷" : "🎟️ 確定送出報名";
+    btn.innerText = isSurveyOrVote ? "📤 確定送出" : "🎟️ 確定送出報名";
   } else {
     btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed";
     btn.innerText = "🚫 您的身分/屆數不符";
@@ -420,33 +446,46 @@ async function submitUserAction() {
   if (actionType.includes('問卷') || actionType.includes('投票')) {
     let resultsObj = {}; 
     let options = [];
-    try { options = JSON.parse(activeEventContext.extraData); } catch(e){}
+    try { options = JSON.parse(activeEventContext.extraData || '[]'); } catch(e){}
     let isValid = true;
+    
+    const isLegacyFormat = options.length > 0 && options[0].qType === undefined;
 
-    options.forEach((opt, idx) => {
-      if (opt.qType === 'text') {
-        const input = document.querySelector(`input[name="voteOption_${idx}"]`);
-        if (input && input.value.trim()) {
-           resultsObj[opt.title] = input.value.trim();
-        } else {
-           isValid = false; 
-        }
-      } else if (opt.qType === 'checkbox') {
-        const checked = document.querySelectorAll(`input[name="voteOption_${idx}"]:checked`);
-        if (checked.length > 0) {
-           resultsObj[opt.title] = Array.from(checked).map(el => el.value).join(', ');
-        } else {
-           isValid = false; 
-        }
-      } else { 
-        const checked = document.querySelector(`input[name="voteOption_${idx}"]:checked`);
-        if (checked) {
-           resultsObj[opt.title] = checked.value;
-        } else {
-           isValid = false; 
-        }
+    if (isLegacyFormat) {
+      // 🌟 舊版相容資料收集
+      const checked = document.querySelector(`input[name="voteOption_legacy"]:checked`);
+      if (checked) {
+         resultsObj['舊版投票選項'] = checked.value;
+      } else {
+         isValid = false;
       }
-    });
+    } else {
+      // 🌟 新版資料收集
+      options.forEach((opt, idx) => {
+        if (opt.qType === 'text') {
+          const input = document.querySelector(`input[name="voteOption_${idx}"]`);
+          if (input && input.value.trim()) {
+             resultsObj[opt.title] = input.value.trim();
+          } else {
+             isValid = false; 
+          }
+        } else if (opt.qType === 'checkbox') {
+          const checked = document.querySelectorAll(`input[name="voteOption_${idx}"]:checked`);
+          if (checked.length > 0) {
+             resultsObj[opt.title] = Array.from(checked).map(el => el.value).join(', ');
+          } else {
+             isValid = false; 
+          }
+        } else { 
+          const checked = document.querySelector(`input[name="voteOption_${idx}"]:checked`);
+          if (checked) {
+             resultsObj[opt.title] = checked.value;
+          } else {
+             isValid = false; 
+          }
+        }
+      });
+    }
 
     if (!isValid) {
       alert("請確保每一題都已填寫或選擇！"); return;
