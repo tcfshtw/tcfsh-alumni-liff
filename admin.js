@@ -90,7 +90,6 @@ async function grantAdminAction(targetLineId, name) {
   } catch(err) { alert("❌ 發生錯誤"); }
 }
 
-// 宣告全域變數，供編輯模式使用
 window.adminEvents = []; 
 window.editingEventId = null;
 
@@ -101,14 +100,12 @@ async function loadAdminEvents() {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEvents' }) });
     const result = await response.json();
     if (result.status === 'success') {
-      window.adminEvents = result.events; // 儲存供編輯還原使用
+      window.adminEvents = result.events; 
       container.innerHTML = '';
       if(result.events.length === 0) container.innerHTML = '<p class="text-sm text-gray-500">目前無活動</p>';
       result.events.forEach(evt => {
-        const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-purple-700">🍽️ 進入桌次安排系統</button>` : '';
-        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-teal-700">📊 檢視參與/結果</button>`;
-        
-        // 🌟 加入編輯按鈕與刪除按鈕，排版優化
+        const seatingBtn = String(evt.type).includes('聚餐') ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-purple-700">🍽️ 進入桌次安排系統</button>` : '';
+        const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${String(evt.date).substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-teal-700">📊 檢視參與/結果</button>`;
         const actionHtml = `
           <div class="flex gap-2 mt-2">
             <button onclick="editEventAction('${evt.id}')" class="flex-1 bg-amber-100 text-amber-700 px-3 py-2 rounded text-sm font-bold shadow-sm hover:bg-amber-200">✏️ 編輯修改</button>
@@ -118,9 +115,9 @@ async function loadAdminEvents() {
         
         container.innerHTML += `
           <div class="border border-gray-200 p-4 rounded-lg bg-gray-50 mb-3 shadow-sm">
-            <div class="font-bold text-gray-800 text-lg">${evt.title}</div>
-            <div class="text-xs text-gray-500 mt-1">📅 ${evt.date.replace('T', ' ')} | 📍 ${evt.location}</div>
-            <div class="text-xs text-gray-500 mt-1">🏷️ ${evt.type} | 👥 ${evt.targetRoles}</div>
+            <div class="font-bold text-gray-800 text-lg">${evt.title || '未命名'}</div>
+            <div class="text-xs text-gray-500 mt-1">📅 ${String(evt.date || '').replace('T', ' ')} | 📍 ${evt.location || '無'}</div>
+            <div class="text-xs text-gray-500 mt-1">🏷️ ${evt.type || '活動'} | 👥 ${evt.targetRoles || '無'}</div>
             ${seatingBtn}
             ${resultBtn}
             ${actionHtml}
@@ -130,51 +127,53 @@ async function loadAdminEvents() {
   } catch(e) { container.innerHTML = '載入失敗'; }
 }
 
-// 🌟 新增：編輯活動還原資料引擎
+// 🌟 安全轉型防禦的編輯引擎
 function editEventAction(eventId) {
-  const evt = window.adminEvents.find(e => e.id === eventId);
-  if(!evt) return;
+  try {
+    const evt = window.adminEvents.find(e => e.id === eventId);
+    if(!evt) return;
 
-  window.editingEventId = eventId;
-  
-  // 切換按鈕狀態為藍色更新按鈕
-  document.getElementById('createEventFormTitle').innerHTML = `<span class="bg-blue-200 p-1.5 rounded-lg text-blue-800">✏️</span> 編輯活動修改 (ID: ${eventId.slice(-4)})`;
-  const btn = document.getElementById('createEventBtn');
-  btn.innerText = "💾 儲存修改";
-  btn.className = "w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 text-lg hover:bg-blue-800 transition active:scale-95 border-b-4 border-blue-900";
+    window.editingEventId = eventId;
+    
+    document.getElementById('createEventFormTitle').innerHTML = `<span class="bg-blue-200 p-1.5 rounded-lg text-blue-800">✏️</span> 編輯活動修改 (ID: ${eventId.slice(-4)})`;
+    const btn = document.getElementById('createEventBtn');
+    btn.innerText = "💾 儲存修改";
+    btn.className = "w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 text-lg hover:bg-blue-800 transition active:scale-95 border-b-4 border-blue-900";
 
-  // 基本資料回填
-  document.getElementById('evTitle').value = evt.title;
-  document.getElementById('evType').value = evt.type;
-  // datetime-local 需要 yyyy-MM-ddThh:mm 格式，從回傳的 ISO 截斷即可
-  document.getElementById('evDate').value = evt.date ? evt.date.slice(0, 16) : '';
-  document.getElementById('evDeadline').value = evt.deadline ? evt.deadline.slice(0, 16) : '';
-  document.getElementById('evLoc').value = evt.location;
-  document.getElementById('evRole').value = evt.targetRoles;
-  toggleRoleInput();
-  document.getElementById('evCohort').value = (evt.targetCohorts !== '全部' && evt.targetCohorts !== '不適用') ? evt.targetCohorts : '';
-  document.getElementById('evContent').value = evt.content;
+    document.getElementById('evTitle').value = evt.title || '';
+    document.getElementById('evType').value = evt.type || '';
+    document.getElementById('evDate').value = evt.date ? String(evt.date).slice(0, 16) : '';
+    document.getElementById('evDeadline').value = evt.deadline ? String(evt.deadline).slice(0, 16) : '';
+    document.getElementById('evLoc').value = evt.location || '';
+    document.getElementById('evRole').value = evt.targetRoles || '全體';
+    toggleRoleInput();
+    document.getElementById('evCohort').value = (evt.targetCohorts !== '全部' && evt.targetCohorts !== '不適用') ? (evt.targetCohorts || '') : '';
+    document.getElementById('evContent').value = evt.content || '';
 
-  // 宣傳圖片回填
-  selectedImages = evt.imageUrls ? evt.imageUrls.split(',').filter(u => u !== "") : [];
-  if (typeof renderImagePreviews === 'function') renderImagePreviews();
+    selectedImages = evt.imageUrls ? String(evt.imageUrls).split(',').filter(u => u !== "") : [];
+    if (typeof renderImagePreviews === 'function') renderImagePreviews();
 
-  // 問卷/投票區塊還原
-  document.getElementById('votingOptionsContainer').innerHTML = "";
-  votingOptionsCount = 0;
-  toggleAdminVotingSection();
+    document.getElementById('votingOptionsContainer').innerHTML = "";
+    votingOptionsCount = 0;
+    toggleAdminVotingSection();
 
-  if ((evt.type.includes('問卷') || evt.type.includes('投票')) && evt.extraData) {
-    let options = [];
-    try { options = JSON.parse(evt.extraData); } catch(e){}
-    options.forEach(opt => {
-      // 呼叫 addVotingOptionUI 時傳入舊有設定進行重建
-      addVotingOptionUI(opt);
-    });
+    const safeType = String(evt.type || '');
+    if ((safeType.includes('問卷') || safeType.includes('投票')) && evt.extraData) {
+      let options = [];
+      try { 
+        const parsed = JSON.parse(evt.extraData); 
+        options = Array.isArray(parsed) ? parsed : [];
+      } catch(e){}
+      
+      options.forEach(opt => {
+        if(typeof opt === 'object') addVotingOptionUI(opt);
+      });
+    }
+
+    document.getElementById('createEventForm').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    alert("載入編輯資料時發生錯誤：" + e.message);
   }
-
-  // 畫面平滑捲動至建立表單區
-  document.getElementById('createEventForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function deleteEventAction(eventId, title) {
@@ -218,12 +217,13 @@ async function viewEventResults(eventId, year, title, type) {
       
       let sortedData = Object.entries(result.data).sort((a,b) => b[1] - a[1]);
       let currentQuestion = "";
+      const safeType = String(type || '');
 
       sortedData.forEach(item => {
-        const fullStr = item[0];
+        const fullStr = String(item[0]);
         const count = item[1];
         
-        if (type.includes('問卷') || type.includes('投票')) {
+        if (safeType.includes('問卷') || safeType.includes('投票')) {
           let match = fullStr.match(/^\[(.*?)\]\s*(.*)$/);
           if (match) {
             let qTitle = match[1];
@@ -316,7 +316,7 @@ function renderSeatingGrid() {
 let votingOptionsCount = 0;
 
 function toggleAdminVotingSection() {
-  const type = document.getElementById('evType').value;
+  const type = String(document.getElementById('evType').value || '');
   const section = document.getElementById('adminVotingSection');
   
   if (type.includes('問卷') || type.includes('投票')) { 
@@ -338,12 +338,12 @@ function handleQuestionTypeChange(selectEl, questionId) {
   }
 }
 
-// 🌟 升級：支援編輯模式初值傳入的動態渲染器
+// 🌟 強迫顯示刪除按鈕，防止圖片網域被擋死導致無法修改
 function addVotingOptionUI(initialData = null) {
   votingOptionsCount++;
   const id = `voteOpt_${Date.now()}_${Math.floor(Math.random()*1000)}`;
   
-  const titleVal = initialData ? initialData.title : '';
+  const titleVal = initialData ? (initialData.title || '') : '';
   const descVal = initialData && initialData.desc ? initialData.desc : '';
   const typeVal = initialData && initialData.qType ? initialData.qType : 'radio';
   const imgUrlVal = initialData && initialData.imgUrl ? initialData.imgUrl : '';
@@ -352,6 +352,8 @@ function addVotingOptionUI(initialData = null) {
   if (imgUrlVal && typeof getDriveThumbnailUrl === 'function') {
     thumbUrl = getDriveThumbnailUrl(imgUrlVal);
   }
+  
+  const hasImage = !!imgUrlVal;
   
   const html = `
     <div id="${id}" class="bg-white p-5 rounded-xl border border-gray-200 border-t-8 border-t-purple-600 relative shadow-md question-block mb-6">
@@ -374,12 +376,16 @@ function addVotingOptionUI(initialData = null) {
       
       <div class="flex items-center gap-2 mb-4">
         <label class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded text-xs font-bold cursor-pointer hover:bg-gray-200 transition">
-          📷 插入/修改圖片
+          📷 插入/替換圖片
           <input type="file" accept="image/*" class="hidden" onchange="handleVotingImageUpload(this, '${id}')">
         </label>
       </div>
       <input type="hidden" class="vote-opt-img-url" value="${imgUrlVal}">
-      <div id="preview_${id}" class="${thumbUrl ? '' : 'hidden'} mb-4 h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" style="background-image: url('${thumbUrl}')" onclick="window.open(document.querySelector('#${id} .vote-opt-img-url').value, '_blank')"></div>
+      
+      <div id="preview_${id}" class="${hasImage ? 'relative' : 'hidden'} mb-4 h-32 w-32 bg-gray-100 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer flex items-center justify-center text-xs text-gray-400" style="background-image: url('${thumbUrl}')">
+        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md hover:bg-red-700 z-10" onclick="event.stopPropagation(); document.getElementById('preview_${id}').classList.remove('relative'); document.getElementById('preview_${id}').classList.add('hidden'); document.querySelector('#${id} .vote-opt-img-url').value = '';">&times;</button>
+        ${hasImage ? '<span class="opacity-0 hover:opacity-100 w-full h-full flex items-center justify-center bg-black/30 rounded-lg text-white font-bold transition">點擊放大</span>' : ''}
+      </div>
 
       <div id="ansBlock_${id}" class="${typeVal === 'text' ? 'hidden' : ''}">
         <div id="ansList_${id}" class="space-y-2 mb-3"></div>
@@ -388,10 +394,9 @@ function addVotingOptionUI(initialData = null) {
     </div>`;
   document.getElementById('votingOptionsContainer').insertAdjacentHTML('beforeend', html);
   
-  // 處理舊答案還原
-  if (initialData && initialData.answers && typeVal !== 'text') {
+  if (initialData && Array.isArray(initialData.answers) && typeVal !== 'text') {
     initialData.answers.forEach(ans => {
-      let cleanAns = ans.replace(/^[A-Z]\.\s*/, '');
+      let cleanAns = String(ans).replace(/^[A-Z]\.\s*/, '');
       addAnswerOption(id, cleanAns);
     });
   } else if (!initialData) {
