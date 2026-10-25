@@ -176,9 +176,10 @@ async function handleVotingImageUpload(inputEl, optId) {
   }
 }
 
+// 🌟 自動辨識建立模式與編輯模式的遞交引擎
 async function submitCreateEvent() {
   if (pendingUploads > 0) {
-    alert("⏳ 還有圖片正在上傳中，請等出現「✅ 完成」後再點擊建立！");
+    alert("⏳ 還有圖片正在上傳中，請等出現「✅ 完成」後再點擊儲存！");
     return;
   }
 
@@ -189,7 +190,7 @@ async function submitCreateEvent() {
 
   if (!title || !date) { alert("請填寫主標題與日期！"); return; }
   
-  const btn = document.getElementById('createEventBtn'); btn.disabled = true; btn.innerText = "極速建立中...";
+  const btn = document.getElementById('createEventBtn'); btn.disabled = true; btn.innerText = "資料處理中...";
   const targetRole = document.getElementById('evRole').value;
 
   let votingOptionsData = [];
@@ -217,14 +218,20 @@ async function submitCreateEvent() {
         votingOptionsData.push({ title: vTitle, desc: vDesc, imgUrl: imgUrl, qType: qType, answers: answers });
       }
     }
-    if (votingOptionsData.length === 0) { alert("請至少新增一個題目！"); btn.disabled = false; btn.innerText = "建立"; return; }
+    if (votingOptionsData.length === 0) { alert("請至少新增一個題目！"); btn.disabled = false; btn.innerText = window.editingEventId ? "💾 儲存修改" : "極速建立活動"; return; }
   }
 
+  // 判斷是否為編輯模式
+  const isEditing = !!window.editingEventId;
+  const actionName = isEditing ? 'updateEvent' : 'createEvent';
+
   const payload = {
-    action: 'createEvent', title: title, type: type, date: date, deadline: deadline, location: document.getElementById('evLoc').value,
+    action: actionName, title: title, type: type, date: date, deadline: deadline, location: document.getElementById('evLoc').value,
     targetRoles: targetRole, targetCohorts: targetRole === '限定屆數' ? (document.getElementById('evCohort').value || "全部") : "不適用",
     content: document.getElementById('evContent').value, images: selectedImages, votingOptions: votingOptionsData 
   };
+  
+  if (isEditing) payload.eventId = window.editingEventId;
 
   try {
     const response = await fetch(GAS_API_URL, { 
@@ -235,10 +242,23 @@ async function submitCreateEvent() {
     });
     const result = await response.json();
     if (result.status === 'success') { 
-      alert("✅ " + result.message); document.getElementById('createEventForm').reset(); 
-      selectedImages = []; renderImagePreviews(); toggleRoleInput(); toggleAdminVotingSection(); loadAdminEvents(); loadEvents();
+      alert("✅ " + result.message); 
+      
+      // 表單與狀態重置
+      document.getElementById('createEventForm').reset(); 
+      selectedImages = []; renderImagePreviews(); 
+      toggleRoleInput(); toggleAdminVotingSection(); 
+      
+      // 取消編輯狀態
+      window.editingEventId = null;
+      document.getElementById('createEventFormTitle').innerHTML = `<span class="bg-red-100 p-1.5 rounded-lg text-red-700">📅</span> 建立專屬活動`;
+      btn.innerText = "極速建立活動";
+      btn.className = "w-full bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 text-lg hover:bg-red-800 transition active:scale-95 border-b-4 border-red-900";
+      
+      loadAdminEvents(); 
+      loadEvents();
     } else alert("❌ 失敗：" + result.message);
-  } catch (err) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "建立"; }
+  } catch (err) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; if(!window.editingEventId) btn.innerText = "極速建立活動"; else btn.innerText = "💾 儲存修改"; }
 }
 
 function checkEligibility(targetRole, targetCohortStr) {
@@ -299,7 +319,6 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
-// 🌟 核心修復：加入「舊版相容引擎」，避免舊投票讀取崩潰
 function openEventDetail(eventId, isEligible) {
   const evt = window.allEvents.find(e => e.id === eventId);
   if(!evt) return;
@@ -339,11 +358,9 @@ function openEventDetail(eventId, isEligible) {
     let options = [];
     try { options = JSON.parse(evt.extraData || '[]'); } catch(e) {}
     
-    // 🌟 判定是否為未升級結構的舊版投票資料
     const isLegacyFormat = options.length > 0 && options[0].qType === undefined;
 
     if (isLegacyFormat) {
-      // 🟢 啟動舊版相容渲染模式
       voteSectionTitle.innerText = "🔘 請選擇您的方案 (舊版相容模式)";
       notice.innerText = "💡 這是早期的單選活動，送出將覆蓋舊選擇。";
       
@@ -372,7 +389,6 @@ function openEventDetail(eventId, isEligible) {
       voteList.innerHTML = `<div class="p-5 border border-gray-100 rounded-2xl mb-5 bg-white shadow-sm">${answersHtml}</div>`;
       
     } else {
-      // 🔵 新版多題型渲染模式
       voteSectionTitle.innerText = "📝 請填寫以下問卷/投票";
       notice.innerText = "💡 再次送出將會覆蓋您的舊答案。";
 
@@ -452,7 +468,6 @@ async function submitUserAction() {
     const isLegacyFormat = options.length > 0 && options[0].qType === undefined;
 
     if (isLegacyFormat) {
-      // 🌟 舊版相容資料收集
       const checked = document.querySelector(`input[name="voteOption_legacy"]:checked`);
       if (checked) {
          resultsObj['舊版投票選項'] = checked.value;
@@ -460,7 +475,6 @@ async function submitUserAction() {
          isValid = false;
       }
     } else {
-      // 🌟 新版資料收集
       options.forEach((opt, idx) => {
         if (opt.qType === 'text') {
           const input = document.querySelector(`input[name="voteOption_${idx}"]`);
