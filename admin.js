@@ -90,7 +90,10 @@ async function grantAdminAction(targetLineId, name) {
   } catch(err) { alert("❌ 發生錯誤"); }
 }
 
-// 🌟 管理員活動列表渲染 (加入刪除活動按鈕)
+// 宣告全域變數，供編輯模式使用
+window.adminEvents = []; 
+window.editingEventId = null;
+
 async function loadAdminEvents() {
   const container = document.getElementById('adminEventsContainer');
   container.innerHTML = '<p class="text-sm text-gray-500">載入中...</p>';
@@ -98,12 +101,20 @@ async function loadAdminEvents() {
     const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEvents' }) });
     const result = await response.json();
     if (result.status === 'success') {
+      window.adminEvents = result.events; // 儲存供編輯還原使用
       container.innerHTML = '';
       if(result.events.length === 0) container.innerHTML = '<p class="text-sm text-gray-500">目前無活動</p>';
       result.events.forEach(evt => {
         const seatingBtn = evt.type === '聚餐' ? `<button onclick="openSeatingManager('${evt.id}', '${evt.title}')" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-purple-700">🍽️ 進入桌次安排系統</button>` : '';
         const resultBtn = `<button onclick="viewEventResults('${evt.id}', '${evt.date.substring(0,4)}', '${evt.title}', '${evt.type}')" class="w-full bg-teal-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-teal-700">📊 檢視參與/結果</button>`;
-        const deleteBtn = `<button onclick="deleteEventAction('${evt.id}', '${evt.title}')" class="w-full bg-red-100 text-red-700 px-3 py-2 rounded text-sm font-bold shadow-sm mt-2 hover:bg-red-200">🗑️ 刪除活動</button>`;
+        
+        // 🌟 加入編輯按鈕與刪除按鈕，排版優化
+        const actionHtml = `
+          <div class="flex gap-2 mt-2">
+            <button onclick="editEventAction('${evt.id}')" class="flex-1 bg-amber-100 text-amber-700 px-3 py-2 rounded text-sm font-bold shadow-sm hover:bg-amber-200">✏️ 編輯修改</button>
+            <button onclick="deleteEventAction('${evt.id}', '${evt.title}')" class="flex-1 bg-red-100 text-red-700 px-3 py-2 rounded text-sm font-bold shadow-sm hover:bg-red-200">🗑️ 刪除活動</button>
+          </div>
+        `;
         
         container.innerHTML += `
           <div class="border border-gray-200 p-4 rounded-lg bg-gray-50 mb-3 shadow-sm">
@@ -112,14 +123,60 @@ async function loadAdminEvents() {
             <div class="text-xs text-gray-500 mt-1">🏷️ ${evt.type} | 👥 ${evt.targetRoles}</div>
             ${seatingBtn}
             ${resultBtn}
-            ${deleteBtn}
+            ${actionHtml}
           </div>`;
       });
     }
   } catch(e) { container.innerHTML = '載入失敗'; }
 }
 
-// 🌟 刪除活動的 API 呼叫
+// 🌟 新增：編輯活動還原資料引擎
+function editEventAction(eventId) {
+  const evt = window.adminEvents.find(e => e.id === eventId);
+  if(!evt) return;
+
+  window.editingEventId = eventId;
+  
+  // 切換按鈕狀態為藍色更新按鈕
+  document.getElementById('createEventFormTitle').innerHTML = `<span class="bg-blue-200 p-1.5 rounded-lg text-blue-800">✏️</span> 編輯活動修改 (ID: ${eventId.slice(-4)})`;
+  const btn = document.getElementById('createEventBtn');
+  btn.innerText = "💾 儲存修改";
+  btn.className = "w-full bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 text-lg hover:bg-blue-800 transition active:scale-95 border-b-4 border-blue-900";
+
+  // 基本資料回填
+  document.getElementById('evTitle').value = evt.title;
+  document.getElementById('evType').value = evt.type;
+  // datetime-local 需要 yyyy-MM-ddThh:mm 格式，從回傳的 ISO 截斷即可
+  document.getElementById('evDate').value = evt.date ? evt.date.slice(0, 16) : '';
+  document.getElementById('evDeadline').value = evt.deadline ? evt.deadline.slice(0, 16) : '';
+  document.getElementById('evLoc').value = evt.location;
+  document.getElementById('evRole').value = evt.targetRoles;
+  toggleRoleInput();
+  document.getElementById('evCohort').value = (evt.targetCohorts !== '全部' && evt.targetCohorts !== '不適用') ? evt.targetCohorts : '';
+  document.getElementById('evContent').value = evt.content;
+
+  // 宣傳圖片回填
+  selectedImages = evt.imageUrls ? evt.imageUrls.split(',').filter(u => u !== "") : [];
+  if (typeof renderImagePreviews === 'function') renderImagePreviews();
+
+  // 問卷/投票區塊還原
+  document.getElementById('votingOptionsContainer').innerHTML = "";
+  votingOptionsCount = 0;
+  toggleAdminVotingSection();
+
+  if ((evt.type.includes('問卷') || evt.type.includes('投票')) && evt.extraData) {
+    let options = [];
+    try { options = JSON.parse(evt.extraData); } catch(e){}
+    options.forEach(opt => {
+      // 呼叫 addVotingOptionUI 時傳入舊有設定進行重建
+      addVotingOptionUI(opt);
+    });
+  }
+
+  // 畫面平滑捲動至建立表單區
+  document.getElementById('createEventForm').scrollIntoView({ behavior: 'smooth' });
+}
+
 async function deleteEventAction(eventId, title) {
   if(!confirm(`⚠️ 確定要永久刪除活動「${title}」嗎？\n\n這會將活動從前台撤下，但系統會安全保留報名歷史以防萬一。`)) return;
   document.getElementById('loadingView').classList.remove('hidden');
@@ -136,7 +193,7 @@ async function deleteEventAction(eventId, title) {
     if (result.status === 'success') {
       alert("✅ 已成功刪除活動！");
       loadAdminEvents();
-      if(typeof loadEvents === 'function') loadEvents(); // 刷新前台
+      if(typeof loadEvents === 'function') loadEvents(); 
     } else {
       alert("❌ 刪除失敗：" + result.message);
     }
@@ -281,9 +338,20 @@ function handleQuestionTypeChange(selectEl, questionId) {
   }
 }
 
-function addVotingOptionUI() {
+// 🌟 升級：支援編輯模式初值傳入的動態渲染器
+function addVotingOptionUI(initialData = null) {
   votingOptionsCount++;
-  const id = `voteOpt_${Date.now()}`;
+  const id = `voteOpt_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+  
+  const titleVal = initialData ? initialData.title : '';
+  const descVal = initialData && initialData.desc ? initialData.desc : '';
+  const typeVal = initialData && initialData.qType ? initialData.qType : 'radio';
+  const imgUrlVal = initialData && initialData.imgUrl ? initialData.imgUrl : '';
+  
+  let thumbUrl = '';
+  if (imgUrlVal && typeof getDriveThumbnailUrl === 'function') {
+    thumbUrl = getDriveThumbnailUrl(imgUrlVal);
+  }
   
   const html = `
     <div id="${id}" class="bg-white p-5 rounded-xl border border-gray-200 border-t-8 border-t-purple-600 relative shadow-md question-block mb-6">
@@ -291,40 +359,48 @@ function addVotingOptionUI() {
       
       <div class="flex gap-4 mb-4 items-start">
         <div class="flex-1">
-          <input type="text" placeholder="📝 題目 (例如：您的衣服尺寸？)" class="vote-opt-title w-full border-b-2 border-gray-200 p-2 outline-none font-bold text-gray-800 text-lg focus:border-purple-600 transition" required>
+          <input type="text" placeholder="📝 題目 (例如：您的衣服尺寸？)" value="${titleVal}" class="vote-opt-title w-full border-b-2 border-gray-200 p-2 outline-none font-bold text-gray-800 text-lg focus:border-purple-600 transition" required>
         </div>
         <div class="w-1/3">
           <select class="vote-opt-type w-full border p-2 rounded-lg bg-gray-50 text-gray-700 outline-none focus:ring-2 ring-purple-300 font-bold" onchange="handleQuestionTypeChange(this, '${id}')">
-            <option value="radio">🔘 單選題</option>
-            <option value="checkbox">☑️ 多選題</option>
-            <option value="text">✍️ 簡答題</option>
+            <option value="radio" ${typeVal === 'radio' ? 'selected' : ''}>🔘 單選題</option>
+            <option value="checkbox" ${typeVal === 'checkbox' ? 'selected' : ''}>☑️ 多選題</option>
+            <option value="text" ${typeVal === 'text' ? 'selected' : ''}>✍️ 簡答題</option>
           </select>
         </div>
       </div>
       
-      <textarea placeholder="題目說明 (選填)" class="vote-opt-desc w-full border-b border-gray-200 p-2 text-sm outline-none mb-3 text-gray-500 focus:border-purple-600 transition resize-none" rows="1"></textarea>
+      <textarea placeholder="題目說明 (選填)" class="vote-opt-desc w-full border-b border-gray-200 p-2 text-sm outline-none mb-3 text-gray-500 focus:border-purple-600 transition resize-none" rows="1">${descVal}</textarea>
       
       <div class="flex items-center gap-2 mb-4">
         <label class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded text-xs font-bold cursor-pointer hover:bg-gray-200 transition">
-          📷 插入圖片
+          📷 插入/修改圖片
           <input type="file" accept="image/*" class="hidden" onchange="handleVotingImageUpload(this, '${id}')">
         </label>
       </div>
-      <input type="hidden" class="vote-opt-img-url" value="">
-      <div id="preview_${id}" class="mb-4 hidden h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" onclick="window.open(this.style.backgroundImage.slice(5, -2), '_blank')"></div>
+      <input type="hidden" class="vote-opt-img-url" value="${imgUrlVal}">
+      <div id="preview_${id}" class="${thumbUrl ? '' : 'hidden'} mb-4 h-32 w-32 bg-cover bg-center rounded-lg border border-gray-200 shadow-sm cursor-pointer" style="background-image: url('${thumbUrl}')" onclick="window.open(document.querySelector('#${id} .vote-opt-img-url').value, '_blank')"></div>
 
-      <div id="ansBlock_${id}">
+      <div id="ansBlock_${id}" class="${typeVal === 'text' ? 'hidden' : ''}">
         <div id="ansList_${id}" class="space-y-2 mb-3"></div>
         <button type="button" onclick="addAnswerOption('${id}')" class="text-purple-600 font-bold text-sm hover:underline px-2">+ 新增選項</button>
       </div>
     </div>`;
   document.getElementById('votingOptionsContainer').insertAdjacentHTML('beforeend', html);
   
-  addAnswerOption(id);
-  addAnswerOption(id);
+  // 處理舊答案還原
+  if (initialData && initialData.answers && typeVal !== 'text') {
+    initialData.answers.forEach(ans => {
+      let cleanAns = ans.replace(/^[A-Z]\.\s*/, '');
+      addAnswerOption(id, cleanAns);
+    });
+  } else if (!initialData) {
+    addAnswerOption(id);
+    addAnswerOption(id);
+  }
 }
 
-function addAnswerOption(questionId) {
+function addAnswerOption(questionId, initialText = '') {
   const container = document.getElementById(`ansList_${questionId}`);
   const count = container.children.length;
   const letter = String.fromCharCode(65 + count); 
@@ -333,7 +409,7 @@ function addAnswerOption(questionId) {
     <div class="flex items-center gap-3 ans-item group">
        <div class="w-5 h-5 rounded-full border-2 border-gray-300"></div>
        <span class="font-bold text-gray-500 text-sm ans-letter w-4">${letter}.</span>
-       <input type="text" placeholder="選項內容" class="ans-input flex-1 border-b border-gray-200 p-1 text-sm outline-none text-gray-700 focus:border-purple-600 transition">
+       <input type="text" placeholder="選項內容" value="${initialText}" class="ans-input flex-1 border-b border-gray-200 p-1 text-sm outline-none text-gray-700 focus:border-purple-600 transition">
        <button type="button" onclick="this.parentElement.remove(); updateAnswerLetters('${questionId}');" class="text-gray-300 hover:text-red-500 font-bold text-xl px-2 opacity-0 group-hover:opacity-100 transition">&times;</button>
     </div>
   `;
