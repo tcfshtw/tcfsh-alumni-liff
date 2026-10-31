@@ -241,6 +241,7 @@ async function submitCreateEvent() {
     const result = await response.json();
     if (result.status === 'success') { 
       alert("✅ " + result.message); 
+      
       document.getElementById('createEventForm').reset(); 
       selectedImages = []; renderImagePreviews(); 
       toggleRoleInput(); toggleAdminVotingSection(); 
@@ -272,10 +273,17 @@ function checkEligibility(targetRole, targetCohortStr) {
   return false;
 }
 
+// 🌟 透過帶入 callerId 獲得校友的報名狀態
 async function loadEvents() {
   const container = document.getElementById('eventsListContainer'); container.innerHTML = '<p class="text-center text-gray-500 py-4">同步中...</p>';
   try {
-    const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'getEvents' }) });
+    const payload = { action: 'getEvents', callerId: currentUserLineId }; // 傳入登入者的 LINE ID
+    const response = await fetch(GAS_API_URL, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      redirect: 'follow',
+      body: JSON.stringify(payload) 
+    });
     const result = await response.json();
     if (result.status === 'success') {
       window.allEvents = result.events;
@@ -290,16 +298,20 @@ async function loadEvents() {
         
         let statusHtml = '';
         const isPassed = evt.deadline && new Date() > new Date(evt.deadline);
+        const isEligible = checkEligibility(evt.targetRoles, evt.targetCohorts);
+        const isSurveyOrVote = String(evt.type).includes('問卷') || String(evt.type).includes('投票');
         
-        if (isPassed) {
+        // 🌟 判斷並顯示已報名/已投票狀態標籤
+        if (evt.userParticipated) {
+          statusHtml = `<span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">✅ 已${isSurveyOrVote ? '投票' : '報名'}</span>`;
+        } else if (isPassed) {
           statusHtml = `<span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded">已截止</span>`;
         } else {
-          const isEligible = checkEligibility(evt.targetRoles, evt.targetCohorts);
           statusHtml = isEligible ? `<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">✅ 可參與</span>` : `<span class="bg-gray-200 text-gray-500 text-xs font-bold px-2 py-1 rounded">🚫 資格不符</span>`;
         }
 
         container.innerHTML += `
-          <div onclick="openEventDetail('${evt.id}', ${checkEligibility(evt.targetRoles, evt.targetCohorts)})" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer transform transition active:scale-95 mb-4">
+          <div onclick="openEventDetail('${evt.id}', ${isEligible})" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer transform transition active:scale-95 mb-4 relative">
             <div class="h-32 w-full bg-cover bg-center flex flex-col justify-end p-3 relative" ${bgImage}>
               <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
               <span class="relative z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full w-max mb-1">${evt.type || '活動'} | 限：${evt.targetRoles || '無'}</span>
@@ -314,7 +326,6 @@ async function loadEvents() {
 
 let activeEventContext = null;
 
-// 🌟 防彈渲染引擎：加入 try-catch 與安全轉型，確保無論舊資料多殘缺都不當機
 function openEventDetail(eventId, isEligible) {
   try {
     const evt = window.allEvents.find(e => e.id === eventId);
@@ -369,7 +380,7 @@ function openEventDetail(eventId, isEligible) {
         
         let answersHtml = '';
         options.forEach((opt, idx) => {
-          if(typeof opt !== 'object') return; // 防護古老純字串結構
+          if(typeof opt !== 'object') return; 
           const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
           const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
           
@@ -378,8 +389,8 @@ function openEventDetail(eventId, isEligible) {
               <input type="radio" name="voteOption_legacy" value="${opt.title || '選項'}" class="peer sr-only">
               <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all peer-checked:border-purple-600 peer-checked:bg-purple-50 flex items-center justify-between shadow-sm hover:border-purple-200">
                 <div class="flex items-center">
-                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
-                      <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                    <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 transition-colors">
+                      <div class="w-2.5 h-2.5 bg-purple-600 rounded-full scale-0 peer-checked:scale-100 transition-transform duration-200"></div>
                     </div>
                     <div>
                         <div class="text-gray-700 font-bold text-sm peer-checked:text-purple-900">${opt.title || '未命名選項'}</div>
@@ -406,17 +417,29 @@ function openEventDetail(eventId, isEligible) {
             answersHtml = `<input type="text" name="voteOption_${idx}" data-title="${opt.title || '簡答題'}" class="w-full border-b-2 border-gray-300 p-2 outline-none text-gray-800 focus:border-purple-600 transition bg-transparent" placeholder="您的回答">`;
           } else {
             const ansArray = Array.isArray(opt.answers) ? opt.answers : [];
+            const isCheckbox = (opt.qType === 'checkbox');
+            const inputType = isCheckbox ? 'checkbox' : 'radio';
+            
             ansArray.forEach(ans => {
-               const inputType = (opt.qType === 'checkbox') ? 'checkbox' : 'radio';
-               const shape = (opt.qType === 'checkbox') ? 'rounded-md' : 'rounded-full';
+               let indicatorHtml = '';
+               
+               if (isCheckbox) {
+                 indicatorHtml = `
+                   <div class="w-5 h-5 rounded-md border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
+                     <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                   </div>`;
+               } else {
+                 indicatorHtml = `
+                   <div class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 transition-colors">
+                     <div class="w-2.5 h-2.5 bg-purple-600 rounded-full scale-0 peer-checked:scale-100 transition-transform duration-200"></div>
+                   </div>`;
+               }
                
                answersHtml += `
                  <label class="relative block cursor-pointer group mb-3">
                    <input type="${inputType}" name="voteOption_${idx}" value="${ans}" class="peer sr-only">
                    <div class="rounded-xl border-2 border-gray-100 bg-white p-3 transition-all duration-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 peer-checked:shadow-sm hover:border-purple-200 flex items-center">
-                     <div class="w-5 h-5 ${shape} border-2 border-gray-300 flex items-center justify-center mr-3 peer-checked:border-purple-600 peer-checked:bg-purple-600 transition-colors">
-                       <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                     </div>
+                     ${indicatorHtml}
                      <span class="text-gray-700 font-bold text-sm peer-checked:text-purple-900 transition-colors">${ans}</span>
                    </div>
                  </label>`;
@@ -447,7 +470,12 @@ function openEventDetail(eventId, isEligible) {
       btn.innerText = "🚫 已超過截止日期";
     } else if (isEligible) {
       btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-md transition active:scale-95";
-      btn.innerText = isSurveyOrVote ? "📤 確定送出" : "🎟️ 確定送出報名";
+      // 🌟 按鈕文字會根據是否已參與自動變化
+      if (evt.userParticipated) {
+        btn.innerText = isSurveyOrVote ? "✏️ 修改我的問卷" : "✏️ 修改我的報名";
+      } else {
+        btn.innerText = isSurveyOrVote ? "📤 確定送出" : "🎟️ 確定送出報名";
+      }
     } else {
       btn.disabled = true; btn.className = "w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed";
       btn.innerText = "🚫 您的身分/屆數不符";
@@ -536,6 +564,10 @@ async function submitUserAction() {
       body: JSON.stringify(payload) 
     });
     const result = await response.json();
-    if(result.status === 'success') { alert("✅ " + result.message); closeEventModal(); } else alert("❌ " + result.message);
+    if(result.status === 'success') { 
+      alert("✅ " + result.message); 
+      closeEventModal(); 
+      loadEvents(); // 🌟 送出成功後立即刷新列表，顯示已報名標籤
+    } else alert("❌ " + result.message);
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "完成"; }
 }
