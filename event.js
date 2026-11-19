@@ -1,4 +1,4 @@
-// 檔案：event.js
+// 檔案：event.js (v20.0 強化錯誤透視、可刪除失敗預覽與選檔重置)
 
 function toggleRoleInput() {
   const role = document.getElementById('evRole').value;
@@ -46,6 +46,7 @@ function compressImageTo1080p(file) {
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg', dataUrl: dataUrl });
       };
+      img.onerror = () => reject(new Error("圖片解析失敗，請確認檔案格式"));
       img.src = event.target.result;
     };
     reader.onerror = error => reject(error);
@@ -93,14 +94,31 @@ async function handleImagePreview(event) {
         selectedImages.push(result.url); 
         renderImagePreviews(); 
       } else {
-        document.getElementById(placeholderId).innerHTML = `<span class="bg-red-500 text-white px-1 text-[10px] font-bold">上傳失敗</span>`;
+        const errMsg = result.message || '未知錯誤';
+        const el = document.getElementById(placeholderId);
+        if (el) {
+          el.innerHTML = `
+            <span class="bg-red-600 text-white px-1 py-0.5 rounded text-[10px] font-bold">上傳失敗</span>
+            <button type="button" onclick="this.parentElement.remove();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-md z-10">&times;</button>
+          `;
+        }
+        alert("❌ 主視覺圖片上傳失敗，後端回報原因：\n" + errMsg);
       }
     } catch(e) {
-      document.getElementById(placeholderId).innerHTML = `<span class="bg-red-500 text-white px-1 text-[10px] font-bold">網路超時</span>`;
+      const el = document.getElementById(placeholderId);
+      if (el) {
+        el.innerHTML = `
+          <span class="bg-red-600 text-white px-1 py-0.5 rounded text-[10px] font-bold">網路異常</span>
+          <button type="button" onclick="this.parentElement.remove();" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-md z-10">&times;</button>
+        `;
+      }
+      alert("❌ 圖片上傳發生連線異常：\n" + e.message);
     } finally {
       pendingUploads--; 
     }
   }
+  // 🌟 重置選檔器，允許隨時重選同一張圖片
+  event.target.value = '';
 }
 
 function renderImagePreviews() {
@@ -164,15 +182,28 @@ async function handleVotingImageUpload(inputEl, optId) {
     const result = await response.json();
     
     if (result.status === 'success') {
-      previewEl.innerHTML = `<span class="bg-green-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">✅ 完成</span>`;
+      previewEl.innerHTML = `
+        <span class="bg-green-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">✅ 完成</span>
+        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md hover:bg-red-700 z-10" onclick="event.stopPropagation(); document.getElementById('preview_${optId}').classList.remove('relative'); document.getElementById('preview_${optId}').classList.add('hidden'); document.querySelector('#${optId} .vote-opt-img-url').value = '';">&times;</button>
+      `;
       hiddenUrlEl.value = result.url;
     } else {
-      previewEl.innerHTML = `<span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 失敗</span>`;
+      const errMsg = result.message || '失敗';
+      previewEl.innerHTML = `
+        <span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 失敗</span>
+        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md hover:bg-red-700 z-10" onclick="event.stopPropagation(); document.getElementById('preview_${optId}').classList.remove('relative'); document.getElementById('preview_${optId}').classList.add('hidden'); document.querySelector('#${optId} .vote-opt-img-url').value = '';">&times;</button>
+      `;
+      alert("❌ 題目圖片上傳失敗，後端回報原因：\n" + errMsg);
     }
   } catch(e) {
-    previewEl.innerHTML = `<span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 網路異常</span>`;
+    previewEl.innerHTML = `
+      <span class="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-bold absolute top-1 left-1">❌ 網路異常</span>
+      <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-md hover:bg-red-700 z-10" onclick="event.stopPropagation(); document.getElementById('preview_${optId}').classList.remove('relative'); document.getElementById('preview_${optId}').classList.add('hidden'); document.querySelector('#${optId} .vote-opt-img-url').value = '';">&times;</button>
+    `;
+    alert("❌ 題目圖片上傳發生連線異常：\n" + e.message);
   } finally {
     pendingUploads--; 
+    inputEl.value = '';
   }
 }
 
@@ -273,11 +304,10 @@ function checkEligibility(targetRole, targetCohortStr) {
   return false;
 }
 
-// 🌟 透過帶入 callerId 獲得校友的報名狀態
 async function loadEvents() {
   const container = document.getElementById('eventsListContainer'); container.innerHTML = '<p class="text-center text-gray-500 py-4">同步中...</p>';
   try {
-    const payload = { action: 'getEvents', callerId: currentUserLineId }; // 傳入登入者的 LINE ID
+    const payload = { action: 'getEvents', callerId: currentUserLineId }; 
     const response = await fetch(GAS_API_URL, { 
       method: 'POST', 
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -301,7 +331,6 @@ async function loadEvents() {
         const isEligible = checkEligibility(evt.targetRoles, evt.targetCohorts);
         const isSurveyOrVote = String(evt.type).includes('問卷') || String(evt.type).includes('投票');
         
-        // 🌟 判斷並顯示已報名/已投票狀態標籤
         if (evt.userParticipated) {
           statusHtml = `<span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">✅ 已${isSurveyOrVote ? '投票' : '報名'}</span>`;
         } else if (isPassed) {
@@ -470,7 +499,6 @@ function openEventDetail(eventId, isEligible) {
       btn.innerText = "🚫 已超過截止日期";
     } else if (isEligible) {
       btn.disabled = false; btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-md transition active:scale-95";
-      // 🌟 按鈕文字會根據是否已參與自動變化
       if (evt.userParticipated) {
         btn.innerText = isSurveyOrVote ? "✏️ 修改我的問卷" : "✏️ 修改我的報名";
       } else {
@@ -567,7 +595,7 @@ async function submitUserAction() {
     if(result.status === 'success') { 
       alert("✅ " + result.message); 
       closeEventModal(); 
-      loadEvents(); // 🌟 送出成功後立即刷新列表，顯示已報名標籤
+      loadEvents(); 
     } else alert("❌ " + result.message);
   } catch(e) { alert("❌ 連線錯誤"); } finally { btn.disabled = false; btn.innerText = "完成"; }
 }
