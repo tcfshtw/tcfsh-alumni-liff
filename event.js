@@ -1,4 +1,4 @@
-// 檔案：event.js (v20.0 強化錯誤透視、可刪除失敗預覽與選檔重置)
+// 檔案：event.js (v22.0 完整呈現不裁切圖片版，保留所有既有功能)
 
 function toggleRoleInput() {
   const role = document.getElementById('evRole').value;
@@ -117,7 +117,6 @@ async function handleImagePreview(event) {
       pendingUploads--; 
     }
   }
-  // 🌟 重置選檔器，允許隨時重選同一張圖片
   event.target.value = '';
 }
 
@@ -324,7 +323,10 @@ async function loadEvents() {
         const coverImgRaw = urlArray.length > 0 && urlArray[0] !== "" ? urlArray[0] : "";
         const coverImg = getDriveThumbnailUrl(coverImgRaw);
         
-        const bgImage = coverImg ? `style="background-image: url('${coverImg}')"` : 'style="background-color: #f3f4f6;"';
+        // 🌟 優化：完整顯示整張圖片不裁切，文字移至下方不遮擋畫面
+        const coverHtml = coverImg 
+          ? `<div class="w-full bg-gray-100 flex justify-center items-center"><img src="${coverImg}" class="w-full h-auto block object-contain" alt="${evt.title || '活動圖片'}"></div>`
+          : `<div class="h-16 w-full bg-gradient-to-r from-blue-900 to-blue-700"></div>`;
         
         let statusHtml = '';
         const isPassed = evt.deadline && new Date() > new Date(evt.deadline);
@@ -341,12 +343,15 @@ async function loadEvents() {
 
         container.innerHTML += `
           <div onclick="openEventDetail('${evt.id}', ${isEligible})" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer transform transition active:scale-95 mb-4 relative">
-            <div class="h-32 w-full bg-cover bg-center flex flex-col justify-end p-3 relative" ${bgImage}>
-              <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-              <span class="relative z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full w-max mb-1">${evt.type || '活動'} | 限：${evt.targetRoles || '無'}</span>
-              <h3 class="relative z-10 text-white font-bold text-lg truncate drop-shadow-md">${evt.title || '未命名'}</h3>
+            ${coverHtml}
+            <div class="p-4">
+              <span class="inline-block bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">${evt.type || '活動'} | 限：${evt.targetRoles || '無'}</span>
+              <h3 class="text-gray-900 font-bold text-lg leading-snug mb-2">${evt.title || '未命名'}</h3>
+              <div class="flex justify-between items-center pt-2 border-t border-gray-100">
+                <span class="text-xs text-gray-500">🕒 ${String(evt.date || '').replace('T', ' ')}</span>
+                ${statusHtml}
+              </div>
             </div>
-            <div class="p-3 border-t border-gray-50"><div class="flex justify-between items-center"><span class="text-xs text-gray-500">🕒 ${String(evt.date || '').replace('T', ' ')}</span>${statusHtml}</div></div>
           </div>`;
       });
     }
@@ -375,13 +380,14 @@ function openEventDetail(eventId, isEligible) {
     document.getElementById('modalDeadline').innerText = evt.deadline ? String(evt.deadline).replace('T', ' ') : '無限制';
     document.getElementById('modalContent').innerText = evt.content || '';
     
+    // 🌟 優化：詳情頁主視覺改用 img + object-contain，完整呈現整張圖片
     const imgBox = document.getElementById('modalImageContainer'); imgBox.innerHTML = "";
     const urlArray = evt.imageUrls ? String(evt.imageUrls).split(',').filter(u => u !== "") : [];
     if (urlArray.length > 0) {
       imgBox.classList.remove('hidden');
       urlArray.forEach(url => { 
         const thumbUrl = getDriveThumbnailUrl(url); 
-        imgBox.innerHTML += `<div class="w-full h-48 flex-shrink-0 snap-center bg-cover bg-center cursor-pointer shadow-sm border border-gray-200 rounded" style="background-image: url('${thumbUrl}')" onclick="window.open('${url}', '_blank')"></div>`; 
+        imgBox.innerHTML += `<img src="${thumbUrl}" class="w-full h-auto max-h-[70vh] object-contain flex-shrink-0 snap-center cursor-pointer shadow-sm rounded bg-black/20" onclick="window.open('${url}', '_blank')">`; 
       });
     } else { imgBox.classList.add('hidden'); }
     
@@ -411,7 +417,7 @@ function openEventDetail(eventId, isEligible) {
         options.forEach((opt, idx) => {
           if(typeof opt !== 'object') return; 
           const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
-          const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-16 h-16 object-cover rounded ml-3 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+          const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-16 h-16 object-contain bg-gray-50 rounded ml-3 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
           
           answersHtml += `
             <label class="relative block cursor-pointer group mb-3">
@@ -439,7 +445,8 @@ function openEventDetail(eventId, isEligible) {
         options.forEach((opt, idx) => {
           if(typeof opt !== 'object') return;
           const thumbOptUrl = opt.imgUrl ? getDriveThumbnailUrl(opt.imgUrl) : '';
-          const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-full h-32 object-cover rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
+          // 🌟 優化：問卷題目圖片完整顯示不裁切
+          const imgHtml = thumbOptUrl ? `<img src="${thumbOptUrl}" class="w-full h-auto max-h-80 object-contain bg-gray-50 rounded-lg mt-2 mb-4 cursor-pointer shadow-sm border border-gray-200" onclick="window.open('${opt.imgUrl}', '_blank'); event.preventDefault();">` : '';
           
           let answersHtml = '';
           if (opt.qType === 'text') {
