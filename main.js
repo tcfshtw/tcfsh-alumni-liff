@@ -1,5 +1,26 @@
 // 檔案：main.js
-// 說明：負責系統初始化與分頁切換，管理員驗證已完全交由 auth_guard.js 獨立處理
+// 說明：負責系統初始化與分頁切換，管理員驗證已完全交由 auth_guard.js 獨立處理 (v23.0 支援網址參數直達分頁)
+
+// 🌟 讀取網址參數，決定進入系統時要打開哪一個分頁
+function getInitialTab() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let tabParam = urlParams.get('tab');
+
+  // 雙重防護：若 LINE LIFF 登入跳轉將參數包在 liff.state 內，也能精準抓出
+  if (!tabParam && urlParams.get('liff.state')) {
+    const liffState = urlParams.get('liff.state');
+    const stateQuery = liffState.includes('?') ? liffState.split('?')[1] : liffState;
+    const stateParams = new URLSearchParams(stateQuery);
+    tabParam = stateParams.get('tab');
+  }
+
+  // 只允許跳轉到合法的公開分頁，若無參數則預設回 'profile'
+  const allowedTabs = ['profile', 'checkin', 'events'];
+  if (tabParam && allowedTabs.includes(tabParam)) {
+    return tabParam;
+  }
+  return 'profile';
+}
 
 async function initializeApp() {
   generateCohortOptions(); 
@@ -25,8 +46,8 @@ async function checkUserData(lineId) {
       renderMemberCard(result.profile); 
     }
     
-    // 無論任何權限，登入後一律先顯示一般首頁
-    switchTab('profile'); 
+    // 🌟 依據網址參數自動切換分頁（預設為 profile，帶 ?tab=events 則直達活動總覽）
+    switchTab(getInitialTab()); 
     
     // 🌟 交由獨立守衛模組 auth_guard.js 處理管理員入口顯示狀態
     if (typeof applyAdminGuardStatus === 'function') {
